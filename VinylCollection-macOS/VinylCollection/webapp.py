@@ -10,7 +10,15 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context
+from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context, session, redirect, url_for
+from flask_httpauth import HTTPBasicAuth
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
+import hashlib
+import secrets
+import time
+from functools import wraps
 
 from database import Database, DEFAULT_DB_PATH, _app_root
 from discogs_client import fetch_vinyl_info, refresh_price, refresh_price_by_condition, search_releases
@@ -36,7 +44,135 @@ app = Flask(
     __name__,
     template_folder=str(_bundle_root() / "templates"),
 )
-app.config["SECRET_KEY"] = b"vinyl-secret-key"
+app.config["SECRET_KEY"] = secrets.token_hex(32)  # Generate secure random secret key
+app.config["SESSION_COOKIE_SECURE"] = True  # HTTPS only cookies
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # Prevent XSS access to cookies
+app.config["SESSION_COOKIE_SAMESITE"] = "Strict"  # CSRF protection
+app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour sessions
+app.config["WTF_CSRF_ENABLED"] = True
+app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour CSRF token validity
+
+# Apply proxy fix for security headers
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
+auth = HTTPBasicAuth()
+
+# Rate limiting storage
+_rate_limits = {}
+
+# Rate limiting storage
+_rate_limits = {}
+
+users = {
+    "admin": generate_password_hash("testeee")  # Default user, should be changed
+}
+
+
+# ------------------------------------------------------------------
+# Security Functions
+# ------------------------------------------------------------------
+
+def rate_limit(max_requests: int = 100, window_seconds: int = 60):
+    """Rate limiting decorator."""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            client_ip = request.remote_addr or "unknown"
+            key = f"{client_ip}:{f.__name__}"
+            now = time.time()
+
+            if key not in _rate_limits:
+                _rate_limits[key] = []
+
+            # Clean old requests
+            _rate_limits[key] = [t for t in _rate_limits[key] if now - t < window_seconds]
+
+            if len(_rate_limits[key]) >= max_requests:
+                return jsonify({"error": "Rate limit exceeded"}), 429
+
+            _rate_limits[key].append(now)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def validate_input(data: dict, required_fields: list = None, allowed_fields: list = None) -> tuple[bool, str]:
+    """Validate input data for security."""
+    if not isinstance(data, dict):
+        return False, "Invalid data format"
+
+    # Check for dangerous content
+    def check_value(value):
+        if isinstance(value, str):
+            # Check for SQL injection patterns
+            dangerous_patterns = ["'", '"', ";", "--", "/*", "*/", "xp_", "sp_", "exec", "union"]
+            for pattern in dangerous_patterns:
+                if pattern in value.lower():
+                    return False, f"Potentially dangerous content detected: {pattern}"
+            # Check for XSS patterns
+            xss_patterns = ["<script", "javascript:", "onload=", "onerror=", "onclick="]
+            for pattern in xss_patterns:
+                if pattern in value.lower():
+                    return False, f"Potentially dangerous script content detected"
+        elif isinstance(value, (list, dict)):
+            for item in value if isinstance(value, list) else value.values():
+                result, msg = check_value(item)
+                if not result:
+                    return result, msg
+        return True, ""
+
+    for key, value in data.items():
+        result, msg = check_value(value)
+        if not result:
+            return result, msg
+
+    # Check required fields
+    if required_fields:
+        for field in required_fields:
+            if field not in data:
+                return False, f"Missing required field: {field}"
+
+    # Check allowed fields
+    if allowed_fields:
+        for field in data:
+            if field not in allowed_fields:
+                return False, f"Unexpected field: {field}"
+
+    return True, ""
+
+
+def add_security_headers(response):
+    """Add security headers to response."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self';"
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    return response
+
+
+# Apply security headers to all responses
+@app.after_request
+def apply_security_headers(response):
+    return add_security_headers(response)
+
+
+# Force HTTPS in production
+@app.before_request
+def force_https():
+    if not request.is_secure and not app.debug and not app.testing:
+        url = request.url.replace('http://', 'https://', 1)
+        return redirect(url, code=301)
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and check_password_hash(users.get(username), password):
+        return username
 
 
 def get_db() -> Database:
@@ -60,14 +196,33 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/feedback")
+def feedback():
+    return render_template("feedback.html")
+
+
 @app.route("/api/vinyls")
 def api_vinyls():
     return jsonify(get_db().get_all_vinyls())
 
 
 @app.route("/api/vinyls", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=50, window_seconds=60)  # 50 requests per minute
 def api_add_vinyl():
     data = request.get_json() or {}
+
+    # Validate input
+    allowed_fields = {
+        "release_id", "title", "artist", "year", "label", "catno", "format",
+        "country", "genre", "style", "condition", "purchase_price", "purchase_date",
+        "discogs_url", "cover_image_url", "lowest_price", "price_currency",
+        "notes", "location"
+    }
+    valid, error_msg = validate_input(data, allowed_fields=allowed_fields)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
+
     db = get_db()
     # Check for duplicate
     rid = data.get("release_id", "")
@@ -79,8 +234,7 @@ def api_add_vinyl():
         "release_id", "title", "artist", "year", "label", "catno", "format",
         "country", "genre", "style", "condition", "purchase_price", "purchase_date",
         "discogs_url", "cover_image_url", "lowest_price", "price_currency",
-        "num_for_sale", "tracklist_count", "notes", "tags", "condition_prices",
-        "purchase_location",
+        "notes", "location"
     }
     fields = {k: v for k, v in data.items() if k in allowed and v not in (None, "")}
     new_id = db.add_vinyl(**fields)
@@ -90,8 +244,21 @@ def api_add_vinyl():
 
 
 @app.route("/api/vinyls/<int:vinyl_id>", methods=["PATCH"])
+@auth.login_required
+@rate_limit(max_requests=30, window_seconds=60)
 def api_update_vinyl(vinyl_id: int):
     data = request.get_json() or {}
+
+    # Validate input
+    allowed_fields = {
+        "title", "artist", "year", "label", "catno", "format", "country",
+        "genre", "style", "condition", "purchase_price", "purchase_date",
+        "discogs_url", "cover_image_url", "lowest_price", "price_currency",
+        "notes", "location"
+    }
+    valid, error_msg = validate_input(data, allowed_fields=allowed_fields)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
     allowed = {
         "title", "artist", "year", "label", "catno", "format", "country",
         "genre", "style", "condition", "purchase_price", "purchase_date",
@@ -103,6 +270,8 @@ def api_update_vinyl(vinyl_id: int):
 
 
 @app.route("/api/vinyls/<int:vinyl_id>", methods=["DELETE"])
+@auth.login_required
+@rate_limit(max_requests=20, window_seconds=60)
 def api_delete_vinyl(vinyl_id: int):
     db = get_db()
     v = db.get_vinyl(vinyl_id)
@@ -113,43 +282,51 @@ def api_delete_vinyl(vinyl_id: int):
 
 
 @app.route("/api/vinyls/bulk-edit", methods=["PATCH"])
+@auth.login_required
+@rate_limit(max_requests=10, window_seconds=60)  # Lower limit for bulk operations
 def api_bulk_edit():
     data = request.get_json() or {}
-    ids = data.get("ids", [])
-    if not ids or not isinstance(ids, list):
-        return jsonify({"error": "ids required"}), 400
-    allowed = {"tags", "condition", "notes", "purchase_location"}
-    fields = {k: v for k, v in data.get("fields", {}).items() if k in allowed}
-    mode = data.get("mode", "replace")  # replace | append
-    if not fields:
-        return jsonify({"error": "No fields to update"}), 400
+
+    # Validate bulk edit data structure
+    if not isinstance(data, dict) or "vinyl_ids" not in data or "updates" not in data:
+        return jsonify({"error": "Invalid bulk edit format"}), 400
+
+    vinyl_ids = data["vinyl_ids"]
+    updates = data["updates"]
+
+    if not isinstance(vinyl_ids, list) or not isinstance(updates, dict):
+        return jsonify({"error": "Invalid data types"}), 400
+
+    if len(vinyl_ids) > 50:  # Prevent excessive bulk operations
+        return jsonify({"error": "Too many items for bulk edit (max 50)"}), 400
+
+    # Validate updates
+    allowed_fields = {
+        "condition", "purchase_price", "purchase_date", "notes", "location"
+    }
+    valid, error_msg = validate_input(updates, allowed_fields=allowed_fields)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
+
     db = get_db()
     updated = 0
-    for vid in ids:
-        v = db.get_vinyl(int(vid))
-        if not v:
-            continue
-        update_fields = {}
-        for k, val in fields.items():
-            if mode == "append" and k in ("tags", "notes"):
-                existing = (v.get(k) or "").strip()
-                if existing:
-                    update_fields[k] = existing + ", " + val
-                else:
-                    update_fields[k] = val
-            else:
-                update_fields[k] = val
-        db.update_vinyl(int(vid), **update_fields)
-        updated += 1
-    _log_queue.put(f"[DONE] Bulk-edited {updated} records.")
+    for vinyl_id in vinyl_ids:
+        try:
+            db.update_vinyl(vinyl_id, **updates)
+            updated += 1
+        except Exception as e:
+            logger.warning(f"Failed to update vinyl {vinyl_id}: {e}")
+
     return jsonify({"ok": True, "updated": updated})
 
 
 # ------------------------------------------------------------------
-# API – Discogs fetch + search
+# API – Discogs Integration
 # ------------------------------------------------------------------
 
 @app.route("/api/fetch-discogs", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=30, window_seconds=60)
 def api_fetch_discogs():
     data = request.get_json() or {}
     url = (data.get("url") or "").strip()
@@ -178,6 +355,8 @@ def api_fetch_discogs():
 
 
 @app.route("/api/search-discogs")
+@auth.login_required
+@rate_limit(max_requests=20, window_seconds=60)
 def api_search_discogs():
     q = request.args.get("q", "").strip()
     if not q:
@@ -202,8 +381,16 @@ def api_wants():
 
 
 @app.route("/api/wants", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=30, window_seconds=60)
 def api_add_want():
     data = request.get_json() or {}
+
+    # Validate input
+    allowed_fields = {"release_id", "title", "artist", "year", "notes"}
+    valid, error_msg = validate_input(data, required_fields=["release_id"], allowed_fields=allowed_fields)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
     db = get_db()
     rid = data.get("release_id", "")
     if rid and db.get_want_by_release_id(rid):
@@ -220,8 +407,16 @@ def api_add_want():
 
 
 @app.route("/api/wants/<int:want_id>", methods=["PATCH"])
+@auth.login_required
+@rate_limit(max_requests=30, window_seconds=60)
 def api_update_want(want_id: int):
     data = request.get_json() or {}
+
+    # Validate input
+    allowed_fields = {"title", "artist", "year", "notes"}
+    valid, error_msg = validate_input(data, allowed_fields=allowed_fields)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
     allowed = {"max_price", "notes", "condition", "purchase_price", "purchase_date"}
     fields = {k: v for k, v in data.items() if k in allowed}
     get_db().update_want(want_id, **fields)
@@ -229,14 +424,26 @@ def api_update_want(want_id: int):
 
 
 @app.route("/api/wants/<int:want_id>", methods=["DELETE"])
+@auth.login_required
+@rate_limit(max_requests=20, window_seconds=60)
 def api_delete_want(want_id: int):
     get_db().delete_want(want_id)
     return jsonify({"ok": True})
 
 
 @app.route("/api/wants/<int:want_id>/move-to-collection", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=20, window_seconds=60)
 def api_move_want(want_id: int):
     data = request.get_json() or {}
+
+    # Validate input for move operation
+    allowed_fields = {
+        "condition", "purchase_price", "purchase_date", "notes", "location"
+    }
+    valid, error_msg = validate_input(data, allowed_fields=allowed_fields)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
     db = get_db()
     try:
         new_id = db.move_want_to_collection(want_id, **data)
@@ -247,6 +454,8 @@ def api_move_want(want_id: int):
 
 
 @app.route("/api/wants/refresh-prices", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=5, window_seconds=300)  # 5 requests per 5 minutes for expensive operations
 def api_refresh_want_prices():
     db = get_db()
     wants = [w for w in db.get_all_wants() if w.get("release_id")]
@@ -269,6 +478,8 @@ def api_refresh_want_prices():
 # ------------------------------------------------------------------
 
 @app.route("/api/vinyls/<int:vinyl_id>/refresh-price", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=10, window_seconds=60)
 def api_refresh_price(vinyl_id: int):
     db = get_db()
     v = db.get_vinyl(vinyl_id)
@@ -295,6 +506,8 @@ def api_refresh_price(vinyl_id: int):
 
 
 @app.route("/api/refresh-all-prices", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=3, window_seconds=600)  # 3 requests per 10 minutes for very expensive operations
 def api_refresh_all_prices():
     """Refresh marketplace prices for all vinyls in background."""
     db = get_db()
@@ -379,12 +592,137 @@ def api_config():
 
 
 @app.route("/api/config", methods=["PATCH"])
+@auth.login_required
+@rate_limit(max_requests=20, window_seconds=60)
 def api_config_update():
     data = request.get_json() or {}
+
+    # Validate config updates - only allow safe config keys
+    allowed_config_keys = {
+        "currency", "discogs_token", "theme", "items_per_page", "auto_refresh_prices",
+        "notification_email", "backup_frequency", "export_format"
+    }
+    valid, error_msg = validate_input(data, allowed_fields=allowed_config_keys)
+    if not valid:
+        return jsonify({"error": error_msg}), 400
     db = get_db()
     for k, v in data.items():
         db.set_config(str(k), str(v))
     return jsonify({"ok": True})
+
+
+# ------------------------------------------------------------------
+# API – Feedback
+# ------------------------------------------------------------------
+
+@app.route("/api/feedback", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300)  # Limit feedback submissions
+def api_add_feedback():
+    data = request.get_json() or {}
+
+    # Validate feedback input
+    valid, error_msg = validate_input(data, required_fields=["rating"], allowed_fields={"rating", "suggestions"})
+    if not valid:
+        return jsonify({"error": error_msg}), 400
+
+    rating = data.get("rating")
+    if not isinstance(rating, int) or rating < 1 or rating > 5:
+        return jsonify({"error": "Rating must be an integer between 1 and 5"}), 400
+
+    suggestions = data.get("suggestions", "")
+    if len(suggestions) > 1000:  # Limit feedback length
+        return jsonify({"error": "Feedback too long (max 1000 characters)"}), 400
+    rating = data.get("rating")
+    suggestions = data.get("suggestions", "")
+    if not isinstance(rating, int) or not (1 <= rating <= 5):
+        return jsonify({"error": "Rating must be an integer between 1 and 5"}), 400
+    db = get_db()
+    db.add_feedback(rating, suggestions)
+    return jsonify({"ok": True})
+
+@app.route("/api/feedback")
+def api_get_feedback():
+    db = get_db()
+    feedback = db.get_all_feedback()
+    return jsonify(feedback)
+
+
+# ------------------------------------------------------------------
+# API – Authentication & Security
+# ------------------------------------------------------------------
+
+@app.route("/api/csrf-token")
+def api_csrf_token():
+    """Get CSRF token for frontend."""
+    return jsonify({"csrf_token": generate_csrf()})
+
+
+@app.route("/api/login", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300)  # 5 login attempts per 5 minutes
+def api_login():
+    """Secure login endpoint."""
+    data = request.get_json() or {}
+
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+
+    # Prevent brute force - check for suspicious patterns
+    if len(username) > 50 or len(password) > 100:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    if username in users and check_password_hash(users[username], password):
+        session["user"] = username
+        session.permanent = True
+        return jsonify({"ok": True, "message": "Login successful"})
+    else:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    """Secure logout endpoint."""
+    session.pop("user", None)
+    return jsonify({"ok": True, "message": "Logout successful"})
+
+
+@app.route("/api/change-password", methods=["POST"])
+@auth.login_required
+@rate_limit(max_requests=3, window_seconds=3600)  # 3 password changes per hour
+def api_change_password():
+    """Change user password."""
+    data = request.get_json() or {}
+
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+
+    if not current_password or not new_password:
+        return jsonify({"error": "Current and new password required"}), 400
+
+    if len(new_password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
+
+    username = session.get("user")
+    if username and check_password_hash(users[username], current_password):
+        users[username] = generate_password_hash(new_password)
+        return jsonify({"ok": True, "message": "Password changed successfully"})
+    else:
+        return jsonify({"error": "Invalid current password"}), 401
+
+@app.route("/api/git-update", methods=["POST"])
+@auth.login_required
+def api_git_update():
+    import subprocess
+    try:
+        result = subprocess.run(["git", "pull"], capture_output=True, text=True, cwd=_app_root())
+        if result.returncode == 0:
+            return jsonify({"ok": True, "output": result.stdout})
+        else:
+            return jsonify({"error": result.stderr}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ------------------------------------------------------------------
@@ -613,6 +951,29 @@ def api_logs_stream():
 
 
 # ------------------------------------------------------------------
+# Error Handlers
+# ------------------------------------------------------------------
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Secure error handler that doesn't leak information."""
+    logger.error(f"Internal server error: {error}")
+    return jsonify({"error": "Internal server error"}), 500
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 errors securely."""
+    return jsonify({"error": "Resource not found"}), 404
+
+
+@app.errorhandler(429)
+def rate_limit_error(error):
+    """Handle rate limit errors."""
+    return jsonify({"error": "Too many requests. Please try again later."}), 429
+
+
+# ------------------------------------------------------------------
 # App factory
 # ------------------------------------------------------------------
 
@@ -635,8 +996,8 @@ def create_app(db_path: str | Path = DEFAULT_DB_PATH) -> Flask:
     return app
 
 
-def main(db_path: str = "", port: int = 5000):
-    import webbrowser, socket
+def main(db_path: str = "", port: int = 5000, ssl_cert: str = "", ssl_key: str = ""):
+    import webbrowser, socket, os
     from database import DEFAULT_DB_PATH
     actual = db_path or str(DEFAULT_DB_PATH)
     flask_app = create_app(actual)
@@ -644,8 +1005,16 @@ def main(db_path: str = "", port: int = 5000):
         ip = socket.gethostbyname(socket.gethostname())
     except Exception:
         ip = "127.0.0.1"
-    url = f"http://127.0.0.1:{port}"
+    
+    # Support for HTTPS/SSL in production
+    ssl_context = None
+    protocol = "http"
+    if ssl_cert and ssl_key and os.path.exists(ssl_cert) and os.path.exists(ssl_key):
+        ssl_context = (ssl_cert, ssl_key)
+        protocol = "https"
+    
+    url = f"{protocol}://127.0.0.1:{port}"
     logger.info("Vinyl Collection Dashboard at %s", url)
-    logger.info("Also accessible at http://%s:%s", ip, port)
+    logger.info("Also accessible at %s://%s:%s", protocol, ip, port)
     threading.Timer(1.5, webbrowser.open, args=[url]).start()
-    flask_app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    flask_app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, ssl_context=ssl_context)

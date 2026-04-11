@@ -517,6 +517,7 @@ tbody tr:hover .ra { opacity: 1; }
         <div class="sdr" onclick="openConfigModal()"><svg width="13" height="13"><use href="#i-sliders"/></svg> Config &amp; API tokens</div>
         <div class="sdr" onclick="openThemeModal()"><svg width="13" height="13"><use href="#i-moon"/></svg> Theme &amp; display</div>
         <div class="sdr" onclick="toggleLog()"><svg width="13" height="13"><use href="#i-log"/></svg> Activity log</div>
+        <div class="sdr" onclick="window.open('/feedback', '_blank')"><svg width="13" height="13"><use href="#i-star"/></svg> Feedback</div>
       </div>
     </div>
   </div>
@@ -962,7 +963,7 @@ tbody tr:hover .ra { opacity: 1; }
 </div>
 
 <script>
-//  State 
+//  State
 let allVinyls = [], allWants = [];
 let sortCol = 'artist', sortAsc = true;
 let wSortCol = 'artist', wSortAsc = true;
@@ -971,6 +972,39 @@ let _searchDebounce = null;
 let _currency = 'EUR';
 let _selectedIds = new Set();
 let _viewMode = 'table'; // 'table' or 'gallery'
+let _csrfToken = null;
+
+//  CSRF Token Management
+async function getCsrfToken() {
+  if (!_csrfToken) {
+    try {
+      const response = await fetch('/api/csrf-token');
+      const data = await response.json();
+      _csrfToken = data.csrf_token;
+    } catch (e) {
+      console.error('Failed to get CSRF token:', e);
+    }
+  }
+  return _csrfToken;
+}
+
+//  Secure API calls with CSRF protection
+async function secureFetch(url, options = {}) {
+  const token = await getCsrfToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+
+  if (token && (options.method === 'POST' || options.method === 'PATCH' || options.method === 'DELETE' || options.method === 'PUT')) {
+    headers['X-CSRFToken'] = token;
+  }
+
+  return fetch(url, {
+    ...options,
+    headers
+  });
+}
 
 //  Tabs 
 function switchTab(tab) {
@@ -1327,9 +1361,12 @@ async function submitBulkEdit() {
   if (notes) fields.notes = notes;
   if (!Object.keys(fields).length) { alert('Select at least one field to update.'); return; }
   const mode = document.getElementById('bulkMode').value;
-  const resp = await fetch('/api/vinyls/bulk-edit', {
-    method: 'PATCH', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ ids: [..._selectedIds], fields, mode })
+  const resp = await secureFetch('/api/vinyls/bulk-edit', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      vinyl_ids: Array.from(_selectedIds),
+      updates: fields
+    })
   });
   if (resp.ok) {
     closeModals(); clearSelection(); loadVinyls(); loadStats();
