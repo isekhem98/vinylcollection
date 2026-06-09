@@ -376,3 +376,4 @@ class Database:
         self.conn.commit()
         logger.info("Loaded %d vinyls + %d wants", len(vinyls), len(wants))
         return len(vinyls)
+ 
