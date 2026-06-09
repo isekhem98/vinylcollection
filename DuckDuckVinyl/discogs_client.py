@@ -215,7 +215,7 @@ def search_releases(query: str, token: str = "", page: int = 1, per_page: int = 
     resp = requests.get(f"{_API}/database/search", headers=_headers(token), params=params, timeout=15)
     resp.raise_for_status()
     out = []
-    for r in results:
+    for r in resp.json().get("results", []):
         # Prefer cover_image (larger) then thumb
         cover = r.get("cover_image") or r.get("thumb") or ""
         out.append({

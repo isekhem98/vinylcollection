@@ -765,4 +765,4 @@ def main(db_path: str = "", port: int = 5000):
     logger.info("DuckDuckVinyl Dashboard at %s", url)
     logger.info("Also accessible at http://%s:%s", ip, port)
     threading.Timer(1.5, webbrowser.open, args=[url]).start()
-    flask_app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    flask_app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
