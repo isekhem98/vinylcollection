@@ -38,12 +38,32 @@ app = Flask(
 )
 app.config["SECRET_KEY"] = b"vinyl-secret-key"
 
+# Optional SQLAlchemy/Postgres setup (managed DB)
+import os
+DATABASE_URL = os.environ.get('DATABASE_URL')
+use_sqlalchemy = False
+_sql_session_factory = None
+_sql_models = None
+if DATABASE_URL:
+    try:
+        from models import init_db, get_session, User, Vinyl, Config
+        init_db(DATABASE_URL)
+        use_sqlalchemy = True
+    except Exception as e:
+        logger.warning('SQLAlchemy init failed: %s', e)
+
 
 def get_db() -> Database:
     global _db
     if _db is None:
         _db = Database()
     return _db
+
+
+def get_sql_session():
+    if not use_sqlalchemy:
+        return None
+    return get_session()
 
 
 class QueueLogHandler(logging.Handler):
@@ -62,18 +82,20 @@ def index():
 
 @app.route("/api/vinyls")
 def api_vinyls():
+    if use_sqlalchemy:
+        from flask import session as flask_session
+        uid = flask_session.get('user_id')
+        if not uid:
+            return jsonify({'error':'authentication required'}), 401
+        s = get_sql_session()
+        vs = s.query(Vinyl).filter(Vinyl.user_id == uid).all()
+        return jsonify([v.to_dict() for v in vs])
     return jsonify(get_db().get_all_vinyls())
 
 
 @app.route("/api/vinyls", methods=["POST"])
 def api_add_vinyl():
     data = request.get_json() or {}
-    db = get_db()
-    # Check for duplicate
-    rid = data.get("release_id", "")
-    if rid and db.get_vinyl_by_release_id(rid):
-        return jsonify({"error": f"Release {rid} is already in your collection."}), 409
-
     # Only keep known columns (prevent SQL injection via column names)
     allowed = {
         "release_id", "title", "artist", "year", "label", "catno", "format",
@@ -83,6 +105,28 @@ def api_add_vinyl():
         "purchase_location",
     }
     fields = {k: v for k, v in data.items() if k in allowed and v not in (None, "")}
+    if use_sqlalchemy:
+        from flask import session as flask_session
+        uid = flask_session.get('user_id')
+        if not uid:
+            return jsonify({'error':'authentication required'}), 401
+        s = get_sql_session()
+        # Check duplicate for this user
+        rid = fields.get('release_id')
+        if rid and s.query(Vinyl).filter(Vinyl.release_id==rid, Vinyl.user_id==uid).first():
+            return jsonify({"error": f"Release {rid} is already in your collection."}), 409
+        v = Vinyl(user_id=uid, **{k: fields.get(k) for k in fields})
+        s.add(v)
+        s.commit()
+        logger.info("Added vinyl: %s – %s", v.artist, v.title)
+        _log_queue.put(f"[DONE] Added: {v.artist} – {v.title}")
+        return jsonify({"ok": True, "id": v.id})
+
+    db = get_db()
+    # Check for duplicate
+    rid = data.get("release_id", "")
+    if rid and db.get_vinyl_by_release_id(rid):
+        return jsonify({"error": f"Release {rid} is already in your collection."}), 409
     new_id = db.add_vinyl(**fields)
     logger.info("Added vinyl: %s – %s", data.get("artist"), data.get("title"))
     _log_queue.put(f"[DONE] Added: {data.get('artist')} – {data.get('title')}")
@@ -98,6 +142,19 @@ def api_update_vinyl(vinyl_id: int):
         "discogs_url", "notes", "tags", "purchase_location",
     }
     fields = {k: v for k, v in data.items() if k in allowed}
+    if use_sqlalchemy:
+        from flask import session as flask_session
+        uid = flask_session.get('user_id')
+        if not uid:
+            return jsonify({'error':'authentication required'}), 401
+        s = get_sql_session()
+        v = s.query(Vinyl).filter(Vinyl.id==vinyl_id, Vinyl.user_id==uid).first()
+        if not v:
+            return jsonify({'error':'not found'}), 404
+        for k, val in fields.items():
+            setattr(v, k, val)
+        s.commit()
+        return jsonify({'ok': True})
     get_db().update_vinyl(vinyl_id, **fields)
     return jsonify({"ok": True})
 
@@ -660,6 +717,33 @@ def create_app(db_path: str | Path = DEFAULT_DB_PATH) -> Flask:
             logger.info("Auto-loaded %d records from data.json", count)
         except Exception as exc:
             logger.warning("Failed to auto-load data.json: %s", exc)
+
+    # Read DISCOGS_TOKEN from environment and store into config if present
+    try:
+        env_token = os.environ.get('DISCOGS_TOKEN')
+        if env_token:
+            if use_sqlalchemy:
+                try:
+                    s = get_sql_session()
+                    # don't overwrite if already present
+                    from models import Config
+                    existing = s.query(Config).filter(Config.key == 'discogs_token').first()
+                    if not existing:
+                        s.add(Config(key='discogs_token', value=env_token))
+                        s.commit()
+                        logger.info('Stored DISCOGS_TOKEN from environment into SQL config table')
+                except Exception as e:
+                    logger.warning('Failed storing DISCOGS_TOKEN into SQL config: %s', e)
+            else:
+                try:
+                    existing = _db.get_config('discogs_token', '')
+                    if not existing:
+                        _db.set_config('discogs_token', env_token)
+                        logger.info('Stored DISCOGS_TOKEN from environment into SQLite config')
+                except Exception as e:
+                    logger.warning('Failed storing DISCOGS_TOKEN into SQLite config: %s', e)
+    except Exception:
+        logger.exception('Error while reading DISCOGS_TOKEN from environment')
 
     handler = QueueLogHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)-5s] %(message)s", datefmt="%H:%M:%S"))
