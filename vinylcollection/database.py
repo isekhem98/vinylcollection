@@ -81,12 +81,6 @@ CREATE TABLE IF NOT EXISTS config (
     key   TEXT PRIMARY KEY,
     value TEXT
 );
-CREATE TABLE IF NOT EXISTS feedback (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    rating      INTEGER CHECK(rating >= 1 AND rating <= 5),
-    suggestions TEXT DEFAULT '',
-    submitted_date TEXT DEFAULT (date('now'))
-);
 """
 
 
@@ -330,22 +324,6 @@ class Database:
         return {r[0]: r[1] for r in rows}
 
     # ------------------------------------------------------------------
-    # Feedback
-    # ------------------------------------------------------------------
-
-    def add_feedback(self, rating: int, suggestions: str = "") -> int:
-        cur = self.conn.execute(
-            "INSERT INTO feedback (rating, suggestions) VALUES (?, ?)",
-            (rating, suggestions),
-        )
-        self.conn.commit()
-        return cur.lastrowid
-
-    def get_all_feedback(self) -> list[dict]:
-        rows = self.conn.execute("SELECT * FROM feedback ORDER BY submitted_date DESC").fetchall()
-        return [dict(r) for r in rows]
-
-    # ------------------------------------------------------------------
     # JSON sync (SharePoint-friendly)
     # ------------------------------------------------------------------
 
@@ -398,3 +376,4 @@ class Database:
         self.conn.commit()
         logger.info("Loaded %d vinyls + %d wants", len(vinyls), len(wants))
         return len(vinyls)
+ 
