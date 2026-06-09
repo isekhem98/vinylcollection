@@ -11,6 +11,7 @@
    THEME TOKENS
    ============================================================ */
 body {
+  /* ── Press (default dark blue) ── */
   --bg: #0f1420; --chrome: #111724;
   --surface: #17203a; --raised: #1f2b48;
   --border: #2c3a53; --bd2: #3f5579;
@@ -28,6 +29,8 @@ body {
   --shadow: rgba(0,0,0,.28);
   --radius: 18px;
 }
+
+/* ── Studio (deep navy) ── */
 body.t-studio {
   --bg: #071026; --chrome: #0c1220;
   --surface: #0f1a2b; --raised: #172836;
@@ -43,6 +46,8 @@ body.t-studio {
   --ctaf: #8fc3f0; --ctat: #4e78a8;
   --shadow: rgba(4,10,20,.46);
 }
+
+/* ── Paper (warm cream light) ── */
 body.t-paper {
   --bg: #fbf6ee; --chrome: #f5eee2;
   --surface: #fffaf4; --raised: #ffffff;
@@ -58,6 +63,8 @@ body.t-paper {
   --ctaf: #c98f56; --ctat: #8f643f;
   --shadow: rgba(6,8,10,.06);
 }
+
+/* ── Daylight (clean white) ── */
 body.t-daylight {
   --bg: #f9fbff; --chrome: #f3f7fb;
   --surface: #ffffff; --raised: #f6f9ff;
@@ -73,9 +80,145 @@ body.t-daylight {
   --ctaf: #6aa7f8; --ctat: #3477c4;
   --shadow: rgba(6,12,20,.06);
 }
-body.t-custom {
-  /* custom theme values are generated dynamically */
+
+/* ── Midnight (pure black OLED) ── */
+body.t-midnight {
+  --bg: #000000; --chrome: #0a0a0a;
+  --surface: #111111; --raised: #1a1a1a;
+  --border: #242424; --bd2: #363636;
+  --text: #f0f0f0; --sub: #888888;
+  --dim: #555555; --ph: #2e2e2e;
+  --btn: #aaaaaa; --bdb: #444444;
+  --acc: #e0e0e0; --acd: #b0b0b0;
+  --act: rgba(224,224,224,.10);
+  --g: #4caf76; --gt: rgba(76,175,118,.10);
+  --r: #e05050; --rt: rgba(224,80,80,.10);
+  --onacc: #000000; --tabhl: #ffffff;
+  --ctaf: #e0e0e0; --ctat: #888888;
+  --shadow: rgba(0,0,0,.7);
 }
+
+/* ── Ember (dark warm amber) ── */
+body.t-ember {
+  --bg: #120d08; --chrome: #1a1108;
+  --surface: #1f160a; --raised: #2a1e0e;
+  --border: #3a2a16; --bd2: #5a4020;
+  --text: #f2e4cc; --sub: #b89060;
+  --dim: #806040; --ph: #4a3018;
+  --btn: #d4a060; --bdb: #7a5030;
+  --acc: #f0900a; --acd: #c07008;
+  --act: rgba(240,144,10,.14);
+  --g: #6ab84a; --gt: rgba(106,184,74,.10);
+  --r: #e05040; --rt: rgba(224,80,64,.10);
+  --onacc: #ffffff; --tabhl: #f4a030;
+  --ctaf: #f4a030; --ctat: #b06010;
+  --shadow: rgba(0,0,0,.5);
+}
+
+/* ── Groove (forest green dark) ── */
+body.t-groove {
+  --bg: #0a100c; --chrome: #0e1610;
+  --surface: #121e14; --raised: #182818;
+  --border: #223224; --bd2: #344e36;
+  --text: #d8f0da; --sub: #7aaa80;
+  --dim: #4a7050; --ph: #2a4430;
+  --btn: #90c898; --bdb: #3a6040;
+  --acc: #4ccc60; --acd: #38a048;
+  --act: rgba(76,204,96,.13);
+  --g: #4ccc60; --gt: rgba(76,204,96,.12);
+  --r: #e06060; --rt: rgba(224,96,96,.10);
+  --onacc: #ffffff; --tabhl: #6ee080;
+  --ctaf: #5ad868; --ctat: #2e8838;
+  --shadow: rgba(0,0,0,.45);
+}
+
+/* ── Violet (purple haze dark) ── */
+body.t-violet {
+  --bg: #0d0814; --chrome: #120e1c;
+  --surface: #171028; --raised: #1e1634;
+  --border: #2e2048; --bd2: #463060;
+  --text: #ede0ff; --sub: #9a80c8;
+  --dim: #6a5088; --ph: #3a2860;
+  --btn: #c0a0e8; --bdb: #6044a0;
+  --acc: #b060ff; --acd: #8040cc;
+  --act: rgba(176,96,255,.13);
+  --g: #60cc80; --gt: rgba(96,204,128,.10);
+  --r: #e06070; --rt: rgba(224,96,112,.10);
+  --onacc: #ffffff; --tabhl: #cc88ff;
+  --ctaf: #c070ff; --ctat: #7030c0;
+  --shadow: rgba(0,0,0,.5);
+}
+
+/* ── Slate (cool grey dark) ── */
+body.t-slate {
+  --bg: #0c0e12; --chrome: #12151c;
+  --surface: #171b24; --raised: #1f2430;
+  --border: #2a3040; --bd2: #3c4560;
+  --text: #d8dce8; --sub: #7880a0;
+  --dim: #505870; --ph: #303848;
+  --btn: #9098b8; --bdb: #485068;
+  --acc: #60a8d8; --acd: #4080b0;
+  --act: rgba(96,168,216,.13);
+  --g: #50b880; --gt: rgba(80,184,128,.10);
+  --r: #d86060; --rt: rgba(216,96,96,.10);
+  --onacc: #ffffff; --tabhl: #80c0e8;
+  --ctaf: #78b8e0; --ctat: #3878a8;
+  --shadow: rgba(0,0,0,.4);
+}
+
+/* ── Liner Notes (dark paper — paper's dark sibling) ── */
+body.t-liner {
+  --bg: #1a1510; --chrome: #231c14;
+  --surface: #2a2018; --raised: #342818;
+  --border: #4a3820; --bd2: #6a5030;
+  --text: #f0e8d8; --sub: #a08868;
+  --dim: #706048; --ph: #503a28;
+  --btn: #c0a070; --bdb: #806040;
+  --acc: #d4a050; --acd: #a87830;
+  --act: rgba(212,160,80,.12);
+  --g: #70b868; --gt: rgba(112,184,104,.10);
+  --r: #c86050; --rt: rgba(200,96,80,.10);
+  --onacc: #ffffff; --tabhl: #e0b870;
+  --ctaf: #d8a858; --ctat: #906428;
+  --shadow: rgba(0,0,0,.5);
+}
+
+/* ── Rose (blush light) ── */
+body.t-rose {
+  --bg: #fdf5f5; --chrome: #f8ecec;
+  --surface: #ffffff; --raised: #fef8f8;
+  --border: #ecd8d8; --bd2: #d8b8b8;
+  --text: #1e1214; --sub: #806060;
+  --dim: #a08080; --ph: #d0b0b0;
+  --btn: #904040; --bdb: #c08080;
+  --acc: #d84060; --acd: #a83048;
+  --act: rgba(216,64,96,.10);
+  --g: #3a9460; --gt: rgba(58,148,96,.10);
+  --r: #c84040; --rt: rgba(200,64,64,.10);
+  --onacc: #ffffff; --tabhl: #e86080;
+  --ctaf: #e05070; --ctat: #a02848;
+  --shadow: rgba(12,4,6,.07);
+}
+
+/* ── Terminal (green-on-black retro) ── */
+body.t-terminal {
+  --bg: #010a04; --chrome: #030f06;
+  --surface: #041408; --raised: #081c0c;
+  --border: #0e2c14; --bd2: #1a4820;
+  --text: #00e040; --sub: #00903a;
+  --dim: #006028; --ph: #0a2010;
+  --btn: #00cc38; --bdb: #007820;
+  --acc: #00ff48; --acd: #00c038;
+  --act: rgba(0,255,72,.10);
+  --g: #00ff48; --gt: rgba(0,255,72,.12);
+  --r: #ff4040; --rt: rgba(255,64,64,.10);
+  --onacc: #000000; --tabhl: #40ff70;
+  --ctaf: #20f050; --ctat: #008828;
+  --shadow: rgba(0,0,0,.7);
+}
+
+/* ── Custom (generated dynamically) ── */
+body.t-custom {}
 
 /* ============================================================
    RESET & BASE
@@ -1037,25 +1180,70 @@ tbody tr:hover .ra { opacity: 1; }
 
 <!-- Theme -->
 <div class="modal-overlay" id="themeModal">
-  <div class="modal" style="width:560px">
+  <div class="modal" style="width:660px">
     <h3>Theme &amp; Display</h3>
-    <div class="tpc-grid" id="tpcards">
+
+    <!-- Dark themes group -->
+    <div style="font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);margin-bottom:8px">Dark</div>
+    <div class="tpc-grid" id="tpcards" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
       <button class="tpc on" data-t="t-press" onclick="applyTheme('t-press')">
         <div class="tpc-visual"><div style="background:#111724"></div><div style="background:#7db7ff"></div><div style="background:#17203a"></div></div>
         <span class="tpc-name">Press</span>
       </button>
       <button class="tpc" data-t="t-studio" onclick="applyTheme('t-studio')">
-        <div class="tpc-visual"><div style="background:#10151f"></div><div style="background:#7bb0d8"></div><div style="background:#151d2a"></div></div>
+        <div class="tpc-visual"><div style="background:#0c1220"></div><div style="background:#6fb0e0"></div><div style="background:#0f1a2b"></div></div>
         <span class="tpc-name">Studio</span>
       </button>
+      <button class="tpc" data-t="t-midnight" onclick="applyTheme('t-midnight')">
+        <div class="tpc-visual"><div style="background:#000000"></div><div style="background:#e0e0e0"></div><div style="background:#111111"></div></div>
+        <span class="tpc-name">Midnight</span>
+      </button>
+      <button class="tpc" data-t="t-ember" onclick="applyTheme('t-ember')">
+        <div class="tpc-visual"><div style="background:#1a1108"></div><div style="background:#f0900a"></div><div style="background:#1f160a"></div></div>
+        <span class="tpc-name">Ember</span>
+      </button>
+      <button class="tpc" data-t="t-groove" onclick="applyTheme('t-groove')">
+        <div class="tpc-visual"><div style="background:#0e1610"></div><div style="background:#4ccc60"></div><div style="background:#121e14"></div></div>
+        <span class="tpc-name">Groove</span>
+      </button>
+      <button class="tpc" data-t="t-violet" onclick="applyTheme('t-violet')">
+        <div class="tpc-visual"><div style="background:#120e1c"></div><div style="background:#b060ff"></div><div style="background:#171028"></div></div>
+        <span class="tpc-name">Violet</span>
+      </button>
+      <button class="tpc" data-t="t-slate" onclick="applyTheme('t-slate')">
+        <div class="tpc-visual"><div style="background:#12151c"></div><div style="background:#60a8d8"></div><div style="background:#171b24"></div></div>
+        <span class="tpc-name">Slate</span>
+      </button>
+      <button class="tpc" data-t="t-liner" onclick="applyTheme('t-liner')">
+        <div class="tpc-visual"><div style="background:#231c14"></div><div style="background:#d4a050"></div><div style="background:#2a2018"></div></div>
+        <span class="tpc-name">Liner Notes</span>
+      </button>
+      <button class="tpc" data-t="t-terminal" onclick="applyTheme('t-terminal')">
+        <div class="tpc-visual"><div style="background:#030f06"></div><div style="background:#00ff48"></div><div style="background:#041408"></div></div>
+        <span class="tpc-name">Terminal</span>
+      </button>
+    </div>
+
+    <!-- Light themes group -->
+    <div style="font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);margin-bottom:8px">Light</div>
+    <div class="tpc-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
       <button class="tpc" data-t="t-paper" onclick="applyTheme('t-paper')">
-        <div class="tpc-visual"><div style="background:#f4efe6"></div><div style="background:#c48143"></div><div style="background:#f8f3eb"></div></div>
+        <div class="tpc-visual"><div style="background:#f5eee2"></div><div style="background:#c77b3f"></div><div style="background:#fffaf4"></div></div>
         <span class="tpc-name">Paper</span>
       </button>
       <button class="tpc" data-t="t-daylight" onclick="applyTheme('t-daylight')">
-        <div class="tpc-visual"><div style="background:#f1f4f8"></div><div style="background:#2d7be2"></div><div style="background:#ffffff"></div></div>
+        <div class="tpc-visual"><div style="background:#f3f7fb"></div><div style="background:#2b7fe9"></div><div style="background:#ffffff"></div></div>
         <span class="tpc-name">Daylight</span>
       </button>
+      <button class="tpc" data-t="t-rose" onclick="applyTheme('t-rose')">
+        <div class="tpc-visual"><div style="background:#f8ecec"></div><div style="background:#d84060"></div><div style="background:#ffffff"></div></div>
+        <span class="tpc-name">Rose</span>
+      </button>
+    </div>
+
+    <!-- Custom -->
+    <div style="font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);margin-bottom:8px">Custom</div>
+    <div class="tpc-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:4px">
       <button class="tpc tpc-custom" data-t="t-custom" onclick="applyTheme('t-custom')">
         <div class="tpc-visual">
           <div id="csw-bg" style="background:#111724"></div>
@@ -1065,23 +1253,71 @@ tbody tr:hover .ra { opacity: 1; }
         <span class="tpc-name">Custom…</span>
       </button>
     </div>
+
+    <!-- Custom theme editor -->
     <div class="ced" id="cedPanel">
       <div class="ced-title">Custom theme builder</div>
-      <div class="ced-seed">
-        <span class="ced-seed-lbl">Seed from:</span>
-        <button class="ced-seed-btn" onclick="seedCustomTheme('press')">Press</button>
-        <button class="ced-seed-btn" onclick="seedCustomTheme('studio')">Studio</button>
-        <button class="ced-seed-btn" onclick="seedCustomTheme('paper')">Paper</button>
-        <button class="ced-seed-btn" onclick="seedCustomTheme('daylight')">Daylight</button>
+
+      <!-- Mode toggle: dark / light base -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="ced-seed-lbl" style="font-size:.62rem;color:var(--sub)">Base:</span>
+        <button class="ced-seed-btn" onclick="seedCustomTheme('press')" title="Dark blue base">Press</button>
+        <button class="ced-seed-btn" onclick="seedCustomTheme('midnight')" title="Pure black base">Midnight</button>
+        <button class="ced-seed-btn" onclick="seedCustomTheme('ember')" title="Dark amber base">Ember</button>
+        <button class="ced-seed-btn" onclick="seedCustomTheme('studio')" title="Deep navy base">Studio</button>
+        <button class="ced-seed-btn" onclick="seedCustomTheme('paper')" title="Warm cream base">Paper</button>
+        <button class="ced-seed-btn" onclick="seedCustomTheme('daylight')" title="Clean white base">Daylight</button>
       </div>
-      <div class="ced-grid">
-        <div class="ce-field"><span class="ce-lbl">Background</span><div class="ce-row"><div class="ce-swatch"><div id="sw-bg-fill" style="width:100%;height:100%;background:#0f1420"></div><input type="color" id="cp-bg" value="#0f1420"></div><input class="ce-hex" id="hx-bg" value="#0f1420" maxlength="7" spellcheck="false"></div></div>
-        <div class="ce-field"><span class="ce-lbl">Chrome</span><div class="ce-row"><div class="ce-swatch"><div id="sw-ch-fill" style="width:100%;height:100%;background:#111724"></div><input type="color" id="cp-ch" value="#111724"></div><input class="ce-hex" id="hx-ch" value="#111724" maxlength="7" spellcheck="false"></div></div>
-        <div class="ce-field"><span class="ce-lbl">Accent</span><div class="ce-row"><div class="ce-swatch"><div id="sw-ac-fill" style="width:100%;height:100%;background:#7db7ff"></div><input type="color" id="cp-ac" value="#7db7ff"></div><input class="ce-hex" id="hx-ac" value="#7db7ff" maxlength="7" spellcheck="false"></div></div>
-        <div class="ce-field"><span class="ce-lbl">Text</span><div class="ce-row"><div class="ce-swatch"><div id="sw-tx-fill" style="width:100%;height:100%;background:#e8eef8"></div><input type="color" id="cp-tx" value="#e8eef8"></div><input class="ce-hex" id="hx-tx" value="#e8eef8" maxlength="7" spellcheck="false"></div></div>
-        <div class="ce-field"><span class="ce-lbl">Border</span><div class="ce-row"><div class="ce-swatch"><div id="sw-bd-fill" style="width:100%;height:100%;background:#2c3a53"></div><input type="color" id="cp-bd" value="#2c3a53"></div><input class="ce-hex" id="hx-bd" value="#2c3a53" maxlength="7" spellcheck="false"></div></div>
+
+      <div class="ced-grid" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">
+        <div class="ce-field">
+          <span class="ce-lbl">Background</span>
+          <div class="ce-row">
+            <div class="ce-swatch"><div id="sw-bg-fill" style="width:100%;height:100%;background:#0f1420"></div><input type="color" id="cp-bg" value="#0f1420"></div>
+            <input class="ce-hex" id="hx-bg" value="#0f1420" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="ce-field">
+          <span class="ce-lbl">Chrome</span>
+          <div class="ce-row">
+            <div class="ce-swatch"><div id="sw-ch-fill" style="width:100%;height:100%;background:#111724"></div><input type="color" id="cp-ch" value="#111724"></div>
+            <input class="ce-hex" id="hx-ch" value="#111724" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="ce-field">
+          <span class="ce-lbl">Accent</span>
+          <div class="ce-row">
+            <div class="ce-swatch"><div id="sw-ac-fill" style="width:100%;height:100%;background:#7db7ff"></div><input type="color" id="cp-ac" value="#7db7ff"></div>
+            <input class="ce-hex" id="hx-ac" value="#7db7ff" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="ce-field">
+          <span class="ce-lbl">Text</span>
+          <div class="ce-row">
+            <div class="ce-swatch"><div id="sw-tx-fill" style="width:100%;height:100%;background:#e8eef8"></div><input type="color" id="cp-tx" value="#e8eef8"></div>
+            <input class="ce-hex" id="hx-tx" value="#e8eef8" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="ce-field">
+          <span class="ce-lbl">Border</span>
+          <div class="ce-row">
+            <div class="ce-swatch"><div id="sw-bd-fill" style="width:100%;height:100%;background:#2c3a53"></div><input type="color" id="cp-bd" value="#2c3a53"></div>
+            <input class="ce-hex" id="hx-bd" value="#2c3a53" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+      </div>
+
+      <!-- Live preview strip -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.78rem">
+        <span style="color:var(--text);font-weight:700">Preview</span>
+        <span style="color:var(--sub)">Subtitle text</span>
+        <span style="background:var(--acc);color:var(--onacc);padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700">Button</span>
+        <span style="background:var(--surface);border:1px solid var(--border);padding:3px 10px;border-radius:999px;font-size:.72rem">Surface</span>
+        <span style="color:var(--g);font-weight:600">+12.50</span>
+        <span style="color:var(--r);font-weight:600">−4.20</span>
       </div>
     </div>
+
     <div class="btn-row">
       <button class="btn btn-outline" onclick="applyTheme('t-press');try{localStorage.removeItem('vinyl-theme');localStorage.removeItem('vinyl-custom-theme');}catch(e){}closeModals()">Reset</button>
       <button class="btn btn-primary" onclick="closeModals()">Done</button>
@@ -2184,16 +2420,8 @@ document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('cli
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(); });
 
 // ── Theme ──────────────────────────────────────────────────────────────────
-const ALL_THEMES = ['t-press','t-studio','t-paper','t-daylight','t-custom','t-ember','t-wax','t-midnight','t-groove','t-violet','t-slate','t-liner'];
-const THEME_MAPPINGS = {
-  't-ember': 't-press',
-  't-wax': 't-studio',
-  't-midnight': 't-daylight',
-  't-groove': 't-studio',
-  't-violet': 't-press',
-  't-slate': 't-studio',
-  't-liner': 't-paper',
-};
+const ALL_THEMES = ['t-press','t-studio','t-paper','t-daylight','t-custom','t-midnight','t-ember','t-groove','t-violet','t-slate','t-liner','t-rose','t-terminal'];
+const THEME_MAPPINGS = {};
 
 function applyTheme(cls) {
   document.body.classList.remove(...ALL_THEMES);
@@ -2253,9 +2481,11 @@ function applyCustomTheme() {
 }
 const SEED_PRESETS = {
   press:    {bg:'#0f1420',ch:'#111724',ac:'#7db7ff',tx:'#e8eef8',bd:'#2c3a53'},
-  studio:   {bg:'#090d14',ch:'#10151f',ac:'#7bb0d8',tx:'#e8eef4',bd:'#243044'},
-  paper:    {bg:'#f4efe6',ch:'#ede5d8',ac:'#c48143',tx:'#1f1c17',bd:'#d6cabd'},
-  daylight: {bg:'#f6f8fb',ch:'#f1f4f8',ac:'#2d7be2',tx:'#1f2937',bd:'#d8dee8'},
+  studio:   {bg:'#071026',ch:'#0c1220',ac:'#6fb0e0',tx:'#e9f3fb',bd:'#1f3146'},
+  midnight: {bg:'#000000',ch:'#0a0a0a',ac:'#e0e0e0',tx:'#f0f0f0',bd:'#242424'},
+  ember:    {bg:'#120d08',ch:'#1a1108',ac:'#f0900a',tx:'#f2e4cc',bd:'#3a2a16'},
+  paper:    {bg:'#fbf6ee',ch:'#f5eee2',ac:'#c77b3f',tx:'#1f1a16',bd:'#e1d6c6'},
+  daylight: {bg:'#f9fbff',ch:'#f3f7fb',ac:'#2b7fe9',tx:'#0f1720',bd:'#dfeaf6'},
 };
 function seedCustomTheme(name) {
   const s = SEED_PRESETS[name]; if (!s) return;
