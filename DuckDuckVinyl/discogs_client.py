@@ -1,4 +1,4 @@
-"""Discogs API client for the Vinyl Collection Dashboard."""
+"""Discogs API client for the DuckDuckVinyl Dashboard."""
 from __future__ import annotations
 
 import re

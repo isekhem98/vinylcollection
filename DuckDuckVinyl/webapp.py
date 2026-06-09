@@ -1,4 +1,4 @@
-"""Flask web dashboard for the Vinyl Collection."""
+"""Flask web dashboard for DuckDuckVinyl."""
 from __future__ import annotations
 
 import json
@@ -507,7 +507,7 @@ def api_export_share():
 def _share_page(data_json: str, stats_json: str, currency: str) -> str:
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vinyl Collection</title>
+<title>DuckDuckVinyl</title>
 <style>
 :root{{--bg:#0f0f13;--surface:#1a1a24;--border:#2a2a3a;--text:#e8e8f0;--text-dim:#7878a0;--accent:#7c3aed;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6;--purple:#a855f7;}}
 *{{box-sizing:border-box;margin:0;padding:0}}body{{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;padding:20px}}
@@ -678,7 +678,7 @@ def main(db_path: str = "", port: int = 5000):
     except Exception:
         ip = "127.0.0.1"
     url = f"http://127.0.0.1:{port}"
-    logger.info("Vinyl Collection Dashboard at %s", url)
+    logger.info("DuckDuckVinyl Dashboard at %s", url)
     logger.info("Also accessible at http://%s:%s", ip, port)
     threading.Timer(1.5, webbrowser.open, args=[url]).start()
     flask_app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
