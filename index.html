@@ -248,19 +248,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 <div id="setup-screen">
   <div class="setup-card">
     <div class="setup-logo">Our <em>Planner</em></div>
-    <p class="setup-tagline">A shared space to plan together — activities, shopping, notes, events, and more.</p>
+    <p class="setup-tagline" id="setup-tagline">A shared space to plan together — activities, shopping, notes, events, and more.</p>
 
     <div class="field">
       <label>Your name</label>
       <input id="sname" type="text" placeholder="e.g. Alex" maxlength="24" autocomplete="off"/>
     </div>
-    <div class="field">
+    <div class="field" id="room-field">
       <label>Room code <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">— share this with your partner</span></label>
       <input id="sroom" type="text" placeholder="e.g. sunday-plans" maxlength="50" autocomplete="off"/>
     </div>
-    <button class="btn btn-dark" style="margin-top:0.75rem" onclick="enterRoom()">Open planner →</button>
-    <div class="sep"><span>or</span></div>
-    <button class="btn btn-outline" onclick="createRoom()">Generate a room code for me</button>
+    <button class="btn btn-dark" style="margin-top:0.75rem" onclick="enterRoom()" id="enter-btn">Open planner →</button>
+    <div class="sep" id="sep-or"><span>or</span></div>
+    <button class="btn btn-outline" id="generate-btn" onclick="createRoom()">Generate a room code for me</button>
   </div>
 </div>
 
@@ -608,16 +608,35 @@ let data = { activities:{}, shopping:{}, notes:{}, ideas:{}, events:{} };
 ═══════════════════════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
   const p = new URLSearchParams(location.search);
-  const r = p.get('room');
-  if (r) document.getElementById('sroom').value = decodeURIComponent(r);
-  const sn = localStorage.getItem('planner_name');
-  if (sn) document.getElementById('sname').value = sn;
+  const roomFromUrl = p.get('room');
+  const savedName = localStorage.getItem('planner_name');
 
   const now = new Date();
   calMonth = now.getMonth(); calYear = now.getFullYear();
 
-  document.getElementById('sname').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('sroom').focus(); });
-  document.getElementById('sroom').addEventListener('keydown', e => { if(e.key==='Enter') enterRoom(); });
+  if (roomFromUrl) {
+    // Room is in the URL — hide the room field and generate button
+    document.getElementById('sroom').value = decodeURIComponent(roomFromUrl);
+    document.getElementById('room-field').style.display = 'none';
+    document.getElementById('sep-or').style.display = 'none';
+    document.getElementById('generate-btn').style.display = 'none';
+    document.getElementById('setup-tagline').textContent = "You've been invited to a shared planner. Just enter your name to join.";
+
+    if (savedName) {
+      // Name remembered — enter automatically, no interaction needed
+      document.getElementById('sname').value = savedName;
+      enterRoom();
+      return;
+    }
+
+    document.getElementById('enter-btn').textContent = 'Join planner →';
+    document.getElementById('sname').addEventListener('keydown', e => { if(e.key==='Enter') enterRoom(); });
+  } else {
+    // Normal landing — show full setup
+    if (savedName) document.getElementById('sname').value = savedName;
+    document.getElementById('sname').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('sroom').focus(); });
+    document.getElementById('sroom').addEventListener('keydown', e => { if(e.key==='Enter') enterRoom(); });
+  }
 });
 
 function createRoom() {
@@ -724,6 +743,7 @@ async function pullGist(force) {
     _lastEtag = r.headers.get('ETag') || null;
     const remote = JSON.parse((await r.json()).files[gistFilename()]?.content || '{}');
     SECTIONS.forEach(sec => { data[sec] = remote[sec] || {}; renderSection(sec); });
+    renderCalendar();
     updateOverview();
     setSyncStatus('ok');
   } catch { setSyncStatus('busy'); }
