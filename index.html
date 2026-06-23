@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Our Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#F7F6F3;
+  --surface:#FFFFFF;
+  --surface2:#F0EEE9;
+  --surface3:#E8E5DE;
+  --border:#E3E0D8;
+  --border2:#C8C4BB;
+  --text:#1A1916;
+  --text2:#6B6760;
+  --text3:#A09C97;
+  --green:#4CAF7D;
+  --amber:#F0A830;
+  --red:#E05C5C;
+  --blue:#6E95F7;
+  --purple:#9B7FF0;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.1),0 2px 8px rgba(0,0,0,0.06);
+  --r:10px;
+  --r-lg:16px;
+  --r-xl:20px;
+}
+
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#141312;
+    --surface:#1D1C1A;
+    --surface2:#252422;
+    --surface3:#2E2C2A;
+    --border:#2E2D2A;
+    --border2:#3E3D39;
+    --text:#F0EDE8;
+    --text2:#8A8780;
+    --text3:#55534F;
+    --shadow:0 1px 3px rgba(0,0,0,0.3);
+    --shadow-lg:0 8px 32px rgba(0,0,0,0.4);
+  }
+}
+
+html{-webkit-font-smoothing:antialiased;font-size:16px}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ═══ SETUP ══════════════════════════════════════════════════ */
+#setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:2.75rem 2.25rem;max-width:420px;width:100%;box-shadow:var(--shadow-lg)}
+.setup-logo{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;color:var(--text);margin-bottom:0.25rem}
+.setup-logo em{font-style:italic;color:var(--text2)}
+.setup-tagline{font-size:13px;color:var(--text3);margin-bottom:2rem;line-height:1.5}
+.field{margin-bottom:0.875rem}
+.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text2);margin-bottom:0.35rem}
+.field input,.field select{width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color 0.15s,box-shadow 0.15s}
+.field input:focus,.field select:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(110,149,247,0.12)}
+.field input::placeholder{color:var(--text3)}
+.sep{display:flex;align-items:center;gap:10px;margin:1.25rem 0}
+.sep::before,.sep::after{content:'';flex:1;height:1px;background:var(--border)}
+.sep span{font-size:12px;color:var(--text3)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--r);border:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.15s,transform 0.1s,background 0.15s}
+.btn:active{transform:scale(0.98)}
+.btn-dark{background:var(--text);color:var(--bg);width:100%}
+.btn-dark:hover{opacity:0.85}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);width:100%}
+.btn-outline:hover{background:var(--surface2)}
+
+/* ═══ APP SHELL ══════════════════════════════════════════════ */
+#app{display:none}
+
+.topbar{position:sticky;top:0;z-index:200;height:58px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(247,246,243,0.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+@media(prefers-color-scheme:dark){.topbar{background:rgba(20,19,18,0.9)}}
+.topbar-brand{font-family:'DM Serif Display',serif;font-size:19px;font-style:italic;color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.room-chip{font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);padding:3px 9px;border-radius:20px;font-family:monospace;letter-spacing:0.04em;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-chip{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 5px}
+.avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+.ib{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background 0.12s,color 0.12s;flex-shrink:0}
+.ib:hover{background:var(--surface2);color:var(--text)}
+
+.main{max-width:960px;margin:0 auto;padding:1.5rem 1.25rem 5rem}
+
+/* ═══ SYNC BAR ═══════════════════════════════════════════════ */
+.sync-bar{display:flex;align-items:center;gap:8px;margin-bottom:1.25rem}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;transition:background 0.3s}
+.sync-dot.busy{animation:pulse 1s infinite;background:var(--amber)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.sync-txt{font-size:12px;color:var(--text3)}
+
+/* ═══ TABS ════════════════════════════════════════════════════ */
+.tabs{display:flex;gap:3px;background:var(--surface2);padding:4px;border-radius:12px;width:fit-content;margin-bottom:1.5rem}
+.tab{padding:7px 20px;border-radius:9px;border:none;background:transparent;color:var(--text2);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.14s;white-space:nowrap}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+/* ═══ OVERVIEW STATS ════════════════════════════════════════ */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+@media(max-width:600px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
+.stat-val{font-size:22px;font-weight:600;color:var(--text);line-height:1}
+.stat-label{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:0.05em}
+
+/* ═══ SECTION GRID ════════════════════════════════════════════ */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+.grid-1{display:grid;grid-template-columns:1fr;gap:1.25rem}
+@media(max-width:620px){.grid-2{grid-template-columns:1fr}}
+.span-2{grid-column:1/-1}
+
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:hidden}
+.section-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.section-head-left{display:flex;align-items:center;gap:8px}
+.section-icon{font-size:14px}
+.section-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text2)}
+.section-count{font-size:11px;color:var(--text3);background:var(--surface2);padding:2px 7px;border-radius:10px;border:1px solid var(--border)}
+
+.item-scroll{overflow-y:auto;max-height:400px;padding:8px}
+.item-scroll::-webkit-scrollbar{width:4px}
+.item-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+.empty{padding:20px 8px;text-align:center;font-size:13px;color:var(--text3);font-style:italic}
+
+/* ═══ ITEMS ══════════════════════════════════════════════════ */
+.item{display:flex;align-items:flex-start;gap:10px;padding:9px 8px;border-radius:8px;transition:background 0.12s;cursor:default}
+.item:hover{background:var(--surface2)}
+.item-check{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--border2);cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all 0.14s}
+.item-check:hover{border-color:var(--text2)}
+.item-check.done{background:var(--green);border-color:var(--green)}
+.item-check.done::after{content:'';width:5px;height:3px;border-left:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(-45deg) translateY(-1px);display:block}
+.item-body{flex:1;min-width:0}
+.item-title{font-size:14px;color:var(--text);line-height:1.4;word-break:break-word}
+.item-title.struck{text-decoration:line-through;color:var(--text3)}
+.item-sub{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:4px}
+.item-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.badge-date{background:rgba(110,149,247,0.12);color:var(--blue)}
+.badge-prio-high{background:rgba(224,92,92,0.12);color:var(--red)}
+.badge-prio-med{background:rgba(240,168,48,0.12);color:var(--amber)}
+.badge-prio-low{background:rgba(76,175,125,0.12);color:var(--green)}
+.badge-cat{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.item-who{font-size:11px;color:var(--text3)}
+.who-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.item-actions{display:flex;gap:4px;flex-shrink:0;margin-top:1px;opacity:0;transition:opacity 0.12s}
+.item:hover .item-actions{opacity:1}
+.ia{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px 4px;border-radius:5px;transition:color 0.12s,background 0.12s;line-height:1}
+.ia:hover{color:var(--text);background:var(--surface3)}
+.ia.del:hover{color:var(--red)}
+
+/* ═══ ADD ROW ════════════════════════════════════════════════ */
+.add-row{display:flex;gap:7px;padding:9px 10px 10px;border-top:1px solid var(--border);flex-shrink:0}
+.add-input{flex:1;font-family:'Inter',sans-serif;font-size:13px;padding:8px 11px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.14s,box-shadow 0.14s}
+.add-input:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(110,149,247,0.1)}
+.add-input::placeholder{color:var(--text3)}
+.add-btn{width:34px;height:34px;border-radius:8px;border:none;background:var(--text);color:var(--bg);font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.14s,transform 0.1s}
+.add-btn:hover{opacity:0.8}
+.add-btn:active{transform:scale(0.95)}
+
+/* ═══ FILTER BAR ═════════════════════════════════════════════ */
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.fpill{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s}
+.fpill.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+
+/* ═══ CALENDAR ═══════════════════════════════════════════════ */
+.cal-wrap{display:grid;grid-template-columns:320px 1fr;gap:1.25rem}
+@media(max-width:700px){.cal-wrap{grid-template-columns:1fr}}
+.cal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid var(--border)}
+.cal-month{font-family:'DM Serif Display',serif;font-size:17px;font-weight:400;color:var(--text)}
+.cal-nav-btn{background:none;border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--text2);font-size:14px;display:flex;align-items:center;justify-content:center;transition:background 0.12s,color 0.12s}
+.cal-nav-btn:hover{background:var(--surface2);color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:10px 12px 14px}
+.cal-dname{text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);padding:4px 0 6px}
+.cal-day{position:relative;aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;color:var(--text2);cursor:pointer;transition:all 0.12s;border:1px solid transparent;user-select:none}
+.cal-day:hover{background:var(--surface2)}
+.cal-day.other-month{color:var(--text3);opacity:0.45}
+.cal-day.today{background:var(--text);color:var(--bg);font-weight:600}
+.cal-day.selected:not(.today){background:rgba(110,149,247,0.14);border-color:rgba(110,149,247,0.35);color:var(--blue);font-weight:600}
+.cal-day.has-items .pip-row{display:flex}
+.pip-row{display:none;gap:2px;position:absolute;bottom:3px;left:50%;transform:translateX(-50%)}
+.pip{width:4px;height:4px;border-radius:50%}
+
+/* ═══ EVENT PANEL ════════════════════════════════════════════ */
+.event-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:hidden}
+.event-head{padding:14px 16px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.event-date-label{font-size:13px;font-weight:500;color:var(--text)}
+.event-empty{flex:1;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text3);font-style:italic;padding:2rem}
+.event-list{flex:1;overflow-y:auto;padding:8px}
+.event-item{display:flex;align-items:flex-start;gap:10px;padding:10px 8px;border-radius:8px;transition:background 0.12s}
+.event-item:hover{background:var(--surface2)}
+.event-stripe{width:3px;border-radius:3px;flex-shrink:0;align-self:stretch;min-height:36px}
+.event-body{flex:1;min-width:0}
+.event-name{font-size:14px;font-weight:500;color:var(--text);line-height:1.3}
+.event-detail{font-size:12px;color:var(--text3);margin-top:3px;display:flex;flex-wrap:wrap;gap:6px}
+
+/* ═══ MODAL ══════════════════════════════════════════════════ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:900;align-items:center;justify-content:center;padding:1rem}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--r-xl);padding:0;max-width:480px;width:100%;box-shadow:var(--shadow-lg);overflow:hidden;max-height:90vh;display:flex;flex-direction:column}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-title{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400}
+.modal-body{overflow-y:auto;padding:18px 20px;flex:1}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.modal-footer .btn{flex:1}
+.mfield{margin-bottom:1rem}
+.mfield label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text2);margin-bottom:0.35rem}
+.mfield input,.mfield select,.mfield textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color 0.14s,box-shadow 0.14s}
+.mfield input:focus,.mfield select:focus,.mfield textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(110,149,247,0.1)}
+.mfield input::placeholder,.mfield textarea::placeholder{color:var(--text3)}
+.mfield textarea{resize:vertical;min-height:70px;line-height:1.5}
+.mfield select option{background:var(--surface);color:var(--text)}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* priority selector */
+.prio-row{display:flex;gap:6px}
+.prio-opt{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid var(--border);background:transparent;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;text-align:center;transition:all 0.13s;color:var(--text2)}
+.prio-opt.sel-high{border-color:var(--red);background:rgba(224,92,92,0.1);color:var(--red)}
+.prio-opt.sel-med{border-color:var(--amber);background:rgba(240,168,48,0.1);color:var(--amber)}
+.prio-opt.sel-low{border-color:var(--green);background:rgba(76,175,125,0.1);color:var(--green)}
+
+/* category chips */
+.cat-row{display:flex;flex-wrap:wrap;gap:6px}
+.cat-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);cursor:pointer;transition:all 0.12s}
+.cat-chip.selected{background:var(--text);color:var(--bg);border-color:var(--text)}
+
+/* ═══ SHARE MODAL ════════════════════════════════════════════ */
+.share-row{display:flex;gap:8px;margin-bottom:10px}
+.share-input{flex:1;font-family:monospace;font-size:12px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text2);outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ═══ TOAST ══════════════════════════════════════════════════ */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:var(--bg);font-size:13px;padding:9px 16px;border-radius:10px;box-shadow:var(--shadow-lg);opacity:0;transition:opacity 0.18s,transform 0.18s;pointer-events:none;white-space:nowrap;z-index:9999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:500px){
+  .topbar{padding:0 1rem}
+  .main{padding:1rem 0.75rem 4rem}
+  .room-chip{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ SETUP ════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">Our <em>Planner</em></div>
+    <p class="setup-tagline">A shared space to plan together — activities, shopping, notes, events, and more.</p>
+
+    <div class="field">
+      <label>Your name</label>
+      <input id="sname" type="text" placeholder="e.g. Alex" maxlength="24" autocomplete="off"/>
+    </div>
+    <div class="field">
+      <label>Room code <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">— share this with your partner</span></label>
+      <input id="sroom" type="text" placeholder="e.g. sunday-plans" maxlength="50" autocomplete="off"/>
+    </div>
+
+    <button class="btn btn-dark" style="margin-top:0.75rem" onclick="enterRoom()">Open planner →</button>
+    <div class="sep"><span>or</span></div>
+    <button class="btn btn-outline" onclick="createRoom()">Generate a room code for me</button>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════════════════════════════ -->
+<div id="app">
+
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="topbar-brand">Planner</span>
+      <span class="room-chip" id="room-display"></span>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip"><div class="avatar" id="uav"></div><span id="uname" style="font-size:13px;color:var(--text2)"></span></div>
+      <button class="ib" title="Share" onclick="openModal('share-modal')">🔗</button>
+      <button class="ib" title="Leave room" onclick="leaveRoom()">↩</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="sync-bar">
+      <div class="sync-dot" id="sdot"></div>
+      <span class="sync-txt" id="stxt">Connecting…</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('overview')">Overview</button>
+      <button class="tab" onclick="showTab('activities')">Activities</button>
+      <button class="tab" onclick="showTab('shopping')">Shopping</button>
+      <button class="tab" onclick="showTab('notes')">Notes</button>
+      <button class="tab" onclick="showTab('calendar')">Calendar</button>
+    </div>
+
+    <!-- ── OVERVIEW ─────────────────────────────────────────── -->
+    <div id="tab-overview">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-val" id="ov-open">0</div><div class="stat-label">Open activities</div></div>
+        <div class="stat-card"><div class="stat-val" id="ov-done">0</div><div class="stat-label">Completed</div></div>
+        <div class="stat-card"><div class="stat-val" id="ov-shop">0</div><div class="stat-label">Shopping items</div></div>
+        <div class="stat-card"><div class="stat-val" id="ov-events">0</div><div class="stat-label">Upcoming events</div></div>
+      </div>
+
+      <div class="grid-2">
+        <!-- upcoming activities -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-head-left">
+              <span class="section-icon">📌</span>
+              <span class="section-label">Upcoming activities</span>
+            </div>
+            <span class="section-count" id="ov-act-count">0</span>
+          </div>
+          <div class="item-scroll" id="ov-act-list"><div class="empty">Nothing planned yet.</div></div>
+          <div class="add-row">
+            <input class="add-input" id="ov-act-input" placeholder="Quick add an activity…" onkeydown="if(event.key==='Enter')quickAdd('activities',this)"/>
+            <button class="add-btn" onclick="quickAdd('activities',document.getElementById('ov-act-input'))">+</button>
+          </div>
+        </div>
+
+        <!-- upcoming events -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-head-left">
+              <span class="section-icon">🗓</span>
+              <span class="section-label">Upcoming events</span>
+            </div>
+            <span class="section-count" id="ov-ev-count">0</span>
+          </div>
+          <div class="item-scroll" id="ov-ev-list"><div class="empty">No events soon.</div></div>
+          <div class="add-row">
+            <input class="add-input" id="ov-ev-input" placeholder="Quick add an event…" onkeydown="if(event.key==='Enter')quickAdd('events',this)"/>
+            <button class="add-btn" onclick="quickAdd('events',document.getElementById('ov-ev-input'))">+</button>
+          </div>
+        </div>
+
+        <!-- recent notes -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-head-left">
+              <span class="section-icon">📝</span>
+              <span class="section-label">Recent notes</span>
+            </div>
+          </div>
+          <div class="item-scroll" id="ov-note-list"><div class="empty">No notes yet.</div></div>
+        </div>
+
+        <!-- shopping preview -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-head-left">
+              <span class="section-icon">🛒</span>
+              <span class="section-label">Shopping</span>
+            </div>
+            <span class="section-count" id="ov-shop-count">0</span>
+          </div>
+          <div class="item-scroll" id="ov-shop-list"><div class="empty">List is empty.</div></div>
+          <div class="add-row">
+            <input class="add-input" id="ov-shop-input" placeholder="Add to shopping list…" onkeydown="if(event.key==='Enter')quickAdd('shopping',this)"/>
+            <button class="add-btn" onclick="quickAdd('shopping',document.getElementById('ov-shop-input'))">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ACTIVITIES ────────────────────────────────────────── -->
+    <div id="tab-activities" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1.25rem">
+        <div class="filter-bar" style="margin-bottom:0">
+          <button class="fpill active" onclick="setFilter('all',this)">All</button>
+          <button class="fpill" onclick="setFilter('mine',this)">Mine</button>
+          <button class="fpill" onclick="setFilter('open',this)">Open</button>
+          <button class="fpill" onclick="setFilter('done',this)">Done</button>
+          <button class="fpill" onclick="setFilter('high',this)">🔴 High priority</button>
+        </div>
+        <button class="btn btn-dark" style="width:auto;padding:8px 16px;font-size:13px" onclick="openAddModal('activities')">+ Add activity</button>
+      </div>
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-head-left">
+            <span class="section-label">Activities</span>
+          </div>
+          <span class="section-count" id="count-activities">0</span>
+        </div>
+        <div class="item-scroll" id="list-activities"><div class="empty">No activities yet. Add one above.</div></div>
+      </div>
+    </div>
+
+    <!-- ── SHOPPING ──────────────────────────────────────────── -->
+    <div id="tab-shopping" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1.25rem">
+        <div class="filter-bar" style="margin-bottom:0">
+          <button class="fpill active" onclick="setShopFilter('all',this)">All</button>
+          <button class="fpill" onclick="setShopFilter('open',this)">Still needed</button>
+          <button class="fpill" onclick="setShopFilter('done',this)">Got it</button>
+        </div>
+        <button class="btn btn-dark" style="width:auto;padding:8px 16px;font-size:13px" onclick="openAddModal('shopping')">+ Add item</button>
+      </div>
+      <div class="grid-2">
+        <div class="section-card span-2">
+          <div class="section-head">
+            <div class="section-head-left"><span class="section-icon">🛒</span><span class="section-label">Shopping list</span></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="section-count" id="count-shopping">0</span>
+              <button class="btn btn-outline" style="width:auto;padding:4px 11px;font-size:11px" onclick="clearDoneShopping()">Clear checked</button>
+            </div>
+          </div>
+          <div class="item-scroll" id="list-shopping" style="max-height:500px"><div class="empty">Nothing on the list.</div></div>
+          <div class="add-row">
+            <input class="add-input" id="input-shopping" placeholder="Add item to shopping list…" onkeydown="if(event.key==='Enter')quickAdd('shopping',this)"/>
+            <button class="add-btn" onclick="quickAdd('shopping',document.getElementById('input-shopping'))">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTES ─────────────────────────────────────────────── -->
+    <div id="tab-notes" style="display:none">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1.25rem">
+        <button class="btn btn-dark" style="width:auto;padding:8px 16px;font-size:13px" onclick="openAddModal('notes')">+ Add note</button>
+      </div>
+      <div class="grid-2">
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-head-left"><span class="section-icon">📝</span><span class="section-label">Notes</span></div>
+            <span class="section-count" id="count-notes">0</span>
+          </div>
+          <div class="item-scroll" id="list-notes"><div class="empty">No notes yet.</div></div>
+          <div class="add-row">
+            <input class="add-input" id="input-notes" placeholder="Quick note…" onkeydown="if(event.key==='Enter')quickAdd('notes',this)"/>
+            <button class="add-btn" onclick="quickAdd('notes',document.getElementById('input-notes'))">+</button>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-head-left"><span class="section-icon">💡</span><span class="section-label">Ideas</span></div>
+            <span class="section-count" id="count-ideas">0</span>
+          </div>
+          <div class="item-scroll" id="list-ideas"><div class="empty">No ideas yet.</div></div>
+          <div class="add-row">
+            <input class="add-input" id="input-ideas" placeholder="An idea…" onkeydown="if(event.key==='Enter')quickAdd('ideas',this)"/>
+            <button class="add-btn" onclick="quickAdd('ideas',document.getElementById('input-ideas'))">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CALENDAR ──────────────────────────────────────────── -->
+    <div id="tab-calendar" style="display:none">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1.25rem">
+        <button class="btn btn-dark" style="width:auto;padding:8px 16px;font-size:13px" onclick="openAddModal('events')">+ Add event</button>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-card">
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+            <span class="cal-month" id="cal-label"></span>
+            <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+
+        <div class="event-panel">
+          <div class="event-head">
+            <span class="event-date-label" id="event-panel-label">Select a day</span>
+            <button class="btn btn-outline" style="width:auto;padding:5px 12px;font-size:12px" id="cal-add-btn" onclick="openAddModal('events')" style="display:none">+ Add</button>
+          </div>
+          <div id="event-panel-body" class="event-empty">Click any day to see or add events.</div>
+          <div class="add-row" id="cal-quick-row" style="display:none">
+            <input class="add-input" id="input-events" placeholder="Quick add event for this day…" onkeydown="if(event.key==='Enter')quickAddEvent()"/>
+            <button class="add-btn" onclick="quickAddEvent()">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- upcoming events list -->
+      <div class="section-card" style="margin-top:1.25rem">
+        <div class="section-head">
+          <div class="section-head-left"><span class="section-icon">📅</span><span class="section-label">All events</span></div>
+          <span class="section-count" id="count-events">0</span>
+        </div>
+        <div class="item-scroll" id="list-events"><div class="empty">No events yet.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ ADD / EDIT MODAL ════════════════════════════════════ -->
+<div class="overlay" id="add-modal" onclick="if(event.target===this)closeModal('add-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Add activity</span>
+      <button class="ib" onclick="closeModal('add-modal')" style="border:none;background:transparent">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="modal-section"/>
+      <input type="hidden" id="modal-edit-key"/>
+
+      <div class="mfield">
+        <label id="modal-text-label">Activity</label>
+        <input id="modal-text" type="text" placeholder="What is it?" autocomplete="off"/>
+      </div>
+
+      <div class="mfield" id="mf-notes">
+        <label>Notes <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">optional</span></label>
+        <textarea id="modal-notes" placeholder="Any extra details…"></textarea>
+      </div>
+
+      <div class="row-2">
+        <div class="mfield" id="mf-date">
+          <label id="modal-date-label">Date</label>
+          <input id="modal-date" type="date"/>
+        </div>
+        <div class="mfield" id="mf-time">
+          <label>Time <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">optional</span></label>
+          <input id="modal-time" type="time"/>
+        </div>
+      </div>
+
+      <div class="mfield" id="mf-prio">
+        <label>Priority</label>
+        <div class="prio-row">
+          <button class="prio-opt" data-p="high" onclick="setPrio(this)">🔴 High</button>
+          <button class="prio-opt" data-p="med" onclick="setPrio(this)">🟡 Medium</button>
+          <button class="prio-opt" data-p="low" onclick="setPrio(this)">🟢 Low</button>
+        </div>
+      </div>
+
+      <div class="mfield" id="mf-cat">
+        <label>Category</label>
+        <div class="cat-row" id="cat-row"></div>
+      </div>
+
+      <div class="mfield" id="mf-qty">
+        <label>Quantity <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">optional</span></label>
+        <input id="modal-qty" type="text" placeholder="e.g. 2, 500g, a pack of…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-dark" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SHARE MODAL ═════════════════════════════════════════ -->
+<div class="overlay" id="share-modal" onclick="if(event.target===this)closeModal('share-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Share your planner</span>
+      <button class="ib" onclick="closeModal('share-modal')" style="border:none;background:transparent">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.6">Share the room code or link below with your partner. They open this page, enter the same code, and you'll both see the same planner — synced live.</p>
+      <div class="mfield"><label>Room code</label>
+        <div class="share-row">
+          <input class="share-input" id="share-code" readonly/>
+          <button class="btn btn-dark" style="width:auto;padding:0 14px;font-size:13px" onclick="copy('share-code','Code copied!')">Copy</button>
+        </div>
+      </div>
+      <div class="mfield"><label>Direct link</label>
+        <div class="share-row">
+          <input class="share-input" id="share-url" readonly/>
+          <button class="btn btn-outline" style="width:auto;padding:0 14px;font-size:13px" onclick="copy('share-url','Link copied!')">Copy</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-dark" onclick="closeModal('share-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+let gun, gunRoom, myName, myRoom, myColor;
+let activeFilter = 'all', shopFilter = 'all';
+let calMonth, calYear, selDate;
+let editingKey = null;
+
+const COLORS = ['#6E95F7','#F47B6E','#4CAF7D','#B07EF0','#F0A830','#40BCD8'];
+const CATS = {
+  activities: ['Sport','Travel','Work','Social','Health','Home','Errand','Other'],
+  events:     ['Birthday','Date','Meeting','Trip','Holiday','Party','Other'],
+  notes:      ['Reminder','Idea','Important','Other'],
+  shopping:   ['Food','Drink','Household','Personal','Other']
+};
+const SECTIONS = ['activities','shopping','notes','ideas','events'];
+
+let data = { activities:{}, shopping:{}, notes:{}, ideas:{}, events:{} };
+
+/* ═══════════════════════════════════════════════════════════
+   SETUP
+═══════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  const p = new URLSearchParams(location.search);
+  const r = p.get('room');
+  if (r) document.getElementById('sroom').value = decodeURIComponent(r);
+  const sn = localStorage.getItem('planner_name');
+  if (sn) document.getElementById('sname').value = sn;
+
+  const now = new Date();
+  calMonth = now.getMonth(); calYear = now.getFullYear();
+
+  document.getElementById('sname').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('sroom').focus(); });
+  document.getElementById('sroom').addEventListener('keydown', e => { if(e.key==='Enter') enterRoom(); });
+});
+
+function createRoom() {
+  const w = ['maple','river','atlas','ember','nova','grove','dusk','bloom','cedar','falcon','north','echo'];
+  const a = w[Math.floor(Math.random()*w.length)], b = w[Math.floor(Math.random()*w.length)];
+  const n = Math.floor(Math.random()*900)+100;
+  document.getElementById('sroom').value = `${a}-${b}-${n}`;
+  document.getElementById('sname').focus();
+}
+
+function enterRoom() {
+  const name = document.getElementById('sname').value.trim();
+  const room = document.getElementById('sroom').value.trim().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  if (!name) { showToast('Enter your name first'); return; }
+  if (!room) { showToast('Enter or generate a room code'); return; }
+  myName = name; myRoom = room;
+  localStorage.setItem('planner_name', myName);
+
+  const ck = 'planner_clr_' + myRoom + '_' + myName;
+  let ci = parseInt(localStorage.getItem(ck));
+  if (isNaN(ci)) { ci = Math.floor(Math.random()*COLORS.length); localStorage.setItem(ck, ci); }
+  myColor = COLORS[ci];
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('room-display').textContent = myRoom;
+  document.getElementById('uname').textContent = myName;
+  const av = document.getElementById('uav');
+  av.textContent = myName.charAt(0).toUpperCase();
+  av.style.background = myColor + '28'; av.style.color = myColor;
+
+  initGun();
+  renderCalendar();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GUN SYNC
+═══════════════════════════════════════════════════════════ */
+function initGun() {
+  gun = GUN(['https://gun-manhattan.herokuapp.com/gun','https://gun-us.herokuapp.com/gun']);
+  gunRoom = gun.get('planner_v3_' + myRoom);
+  setSyncStatus('busy');
+
+  SECTIONS.forEach(sec => {
+    gunRoom.get(sec).map().on((val, key) => {
+      if (val === null || !val) { delete data[sec][key]; }
+      else if (val.text)        { data[sec][key] = val; }
+      renderSection(sec);
+      updateOverview();
+    });
+  });
+
+  setTimeout(() => setSyncStatus('ok'), 2000);
+}
+
+function setSyncStatus(state) {
+  const d = document.getElementById('sdot'), t = document.getElementById('stxt');
+  if (state === 'busy') { d.classList.add('busy'); t.textContent = 'Syncing…'; }
+  else                  { d.classList.remove('busy'); d.style.background='var(--green)'; t.textContent = 'Live — synced with your partner'; }
+}
+
+function put(sec, key, item) {
+  gunRoom.get(sec).get(key).put(item);
+  setSyncStatus('busy');
+  setTimeout(() => setSyncStatus('ok'), 900);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADD / EDIT / DELETE
+═══════════════════════════════════════════════════════════ */
+function newKey() { return Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+function quickAdd(sec, inputEl) {
+  const text = inputEl.value.trim(); if (!text) return;
+  const key = newKey();
+  const item = { text, who:myName, color:myColor, createdAt: Date.now(), done:false, notes:'', date:'', time:'', priority:'', category:'', qty:'' };
+  put(sec, key, item);
+  inputEl.value = ''; inputEl.focus();
+}
+
+function quickAddEvent() {
+  const input = document.getElementById('input-events');
+  const text = input.value.trim(); if (!text) return;
+  const key = newKey();
+  const item = { text, who:myName, color:myColor, createdAt:Date.now(), done:false, notes:'', date:selDate||'', time:'', priority:'', category:'', qty:'' };
+  put('events', key, item);
+  input.value = ''; input.focus();
+}
+
+function deleteItem(sec, key) {
+  gunRoom.get(sec).get(key).put(null);
+  delete data[sec][key];
+  renderSection(sec);
+  updateOverview();
+  showToast('Removed');
+}
+
+function toggleDone(sec, key) {
+  const item = data[sec][key]; if (!item) return;
+  put(sec, key, Object.assign({}, item, { done: !item.done }));
+}
+
+function clearDoneShopping() {
+  Object.entries(data.shopping).forEach(([k,v]) => { if (v && v.done) deleteItem('shopping',k); });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADD MODAL
+═══════════════════════════════════════════════════════════ */
+const MODAL_CFG = {
+  activities: { title:'Add activity',    textLabel:'Activity',  showDate:true, showPrio:true, showCat:true, showQty:false, showNotes:true },
+  events:     { title:'Add event',       textLabel:'Event name',showDate:true, showPrio:false,showCat:true, showQty:false, showNotes:true },
+  shopping:   { title:'Add item',        textLabel:'Item',      showDate:false,showPrio:false,showCat:true, showQty:true,  showNotes:true },
+  notes:      { title:'Add note',        textLabel:'Note',      showDate:false,showPrio:true, showCat:true, showQty:false, showNotes:false },
+  ideas:      { title:'Add idea',        textLabel:'Idea',      showDate:false,showPrio:false,showCat:false,showQty:false, showNotes:true },
+};
+
+function openAddModal(sec, key) {
+  editingKey = key || null;
+  const cfg = MODAL_CFG[sec] || MODAL_CFG.notes;
+  document.getElementById('modal-section').value = sec;
+  document.getElementById('modal-edit-key').value = key || '';
+  document.getElementById('modal-title').textContent = key ? 'Edit' : cfg.title;
+  document.getElementById('modal-text-label').textContent = cfg.textLabel;
+
+  // reset
+  document.getElementById('modal-text').value = '';
+  document.getElementById('modal-notes').value = '';
+  document.getElementById('modal-date').value = sec==='events'&&selDate ? selDate : '';
+  document.getElementById('modal-time').value = '';
+  document.getElementById('modal-qty').value = '';
+  document.querySelectorAll('.prio-opt').forEach(b => { b.className='prio-opt'; });
+  document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('selected'));
+
+  // show/hide fields
+  document.getElementById('mf-date').style.display = cfg.showDate ? '' : 'none';
+  document.getElementById('mf-time').style.display = cfg.showDate ? '' : 'none';
+  document.getElementById('mf-prio').style.display = cfg.showPrio ? '' : 'none';
+  document.getElementById('mf-cat').style.display  = cfg.showCat  ? '' : 'none';
+  document.getElementById('mf-qty').style.display  = cfg.showQty  ? '' : 'none';
+  document.getElementById('mf-notes').style.display= cfg.showNotes? '' : 'none';
+
+  // categories
+  const cats = CATS[sec] || [];
+  document.getElementById('cat-row').innerHTML = cats.map(c =>
+    `<button class="cat-chip" onclick="toggleCat(this)">${c}</button>`).join('');
+
+  // fill if editing
+  if (key && data[sec] && data[sec][key]) {
+    const it = data[sec][key];
+    document.getElementById('modal-text').value  = it.text || '';
+    document.getElementById('modal-notes').value = it.notes || '';
+    document.getElementById('modal-date').value  = it.date || '';
+    document.getElementById('modal-time').value  = it.time || '';
+    document.getElementById('modal-qty').value   = it.qty  || '';
+    if (it.priority) {
+      const pb = document.querySelector(`.prio-opt[data-p="${it.priority}"]`);
+      if (pb) setPrio(pb);
+    }
+    if (it.category) {
+      document.querySelectorAll('.cat-chip').forEach(b => { if(b.textContent===it.category) b.classList.add('selected'); });
+    }
+  }
+
+  openModal('add-modal');
+  setTimeout(() => document.getElementById('modal-text').focus(), 80);
+}
+
+function setPrio(btn) {
+  document.querySelectorAll('.prio-opt').forEach(b => { b.className='prio-opt'; });
+  const p = btn.dataset.p;
+  btn.classList.add(`sel-${p}`);
+}
+
+function toggleCat(btn) {
+  document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function saveModal() {
+  const sec  = document.getElementById('modal-section').value;
+  const key  = document.getElementById('modal-edit-key').value || newKey();
+  const text = document.getElementById('modal-text').value.trim();
+  if (!text) { showToast('Please enter a title'); return; }
+
+  const prioBtnSel = document.querySelector('.prio-opt.sel-high,.prio-opt.sel-med,.prio-opt.sel-low');
+  const catBtnSel  = document.querySelector('.cat-chip.selected');
+
+  const item = {
+    text,
+    notes:    document.getElementById('modal-notes').value.trim(),
+    date:     document.getElementById('modal-date').value  || '',
+    time:     document.getElementById('modal-time').value  || '',
+    qty:      document.getElementById('modal-qty').value.trim() || '',
+    priority: prioBtnSel ? prioBtnSel.dataset.p : '',
+    category: catBtnSel  ? catBtnSel.textContent  : '',
+    who:      myName,
+    color:    myColor,
+    createdAt:Date.now(),
+    done:     (data[sec] && data[sec][key] && data[sec][key].done) || false,
+  };
+
+  put(sec, key, item);
+  closeModal('add-modal');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER HELPERS
+═══════════════════════════════════════════════════════════ */
+function sortEntries(entries) {
+  return entries.sort((a,b) => {
+    const da = a[1].date || '', db = b[1].date || '';
+    if (da && db) return da.localeCompare(db);
+    if (da) return -1; if (db) return 1;
+    return (b[1].createdAt||0) - (a[1].createdAt||0);
+  });
+}
+
+function badgesHTML(item, sec) {
+  let out = '';
+  if (item.date) {
+    const d = fmtDate(item.date);
+    const isPast = item.date < todayStr() && !item.done;
+    out += `<span class="item-badge badge-date" style="${isPast?'background:rgba(224,92,92,0.1);color:var(--red)':''}">📅 ${d}</span>`;
+  }
+  if (item.time && item.date) out += `<span class="item-badge badge-cat">⏰ ${fmtTime(item.time)}</span>`;
+  if (item.priority==='high') out += `<span class="item-badge badge-prio-high">🔴 High</span>`;
+  if (item.priority==='med')  out += `<span class="item-badge badge-prio-med">🟡 Medium</span>`;
+  if (item.priority==='low')  out += `<span class="item-badge badge-prio-low">🟢 Low</span>`;
+  if (item.category) out += `<span class="item-badge badge-cat">${item.category}</span>`;
+  if (item.qty)      out += `<span class="item-badge badge-cat">× ${esc(item.qty)}</span>`;
+  return out;
+}
+
+function renderItem(sec, key, item, compact) {
+  const col = item.color || '#aaa';
+  const notes = item.notes ? `<div style="font-size:12px;color:var(--text3);margin-top:3px;line-height:1.4">${esc(item.notes)}</div>` : '';
+  const badges = badgesHTML(item, sec);
+  const metaBadge = badges ? `<div class="item-sub">${badges}</div>` : '';
+  const whoLine = `<div style="display:flex;align-items:center;gap:5px;margin-top:4px"><span class="who-dot" style="background:${col}"></span><span class="item-who">${esc(item.who)}</span></div>`;
+  return `
+    <div class="item">
+      <div class="item-check ${item.done?'done':''}" onclick="toggleDone('${sec}','${key}')"></div>
+      <div class="item-body">
+        <div class="item-title ${item.done?'struck':''}">${esc(item.text)}</div>
+        ${compact ? '' : metaBadge + notes}
+        ${whoLine}
+      </div>
+      <div class="item-actions">
+        <button class="ia" onclick="openAddModal('${sec}','${key}')" title="Edit">✏️</button>
+        <button class="ia del" onclick="deleteItem('${sec}','${key}')" title="Remove">✕</button>
+      </div>
+    </div>`;
+}
+
+function renderSection(sec) {
+  if (sec === 'events') { renderEvents(); renderCalendar(); updateOverview(); return; }
+
+  const listEl = document.getElementById('list-'+sec);
+  const countEl = document.getElementById('count-'+sec);
+  if (!listEl) return;
+
+  let entries = Object.entries(data[sec]).filter(([,v]) => v && v.text);
+
+  // filters
+  if (sec === 'activities') {
+    if (activeFilter === 'mine') entries = entries.filter(([,v]) => v.who === myName);
+    if (activeFilter === 'open') entries = entries.filter(([,v]) => !v.done);
+    if (activeFilter === 'done') entries = entries.filter(([,v]) => v.done);
+    if (activeFilter === 'high') entries = entries.filter(([,v]) => v.priority === 'high');
+  }
+  if (sec === 'shopping') {
+    if (shopFilter === 'open') entries = entries.filter(([,v]) => !v.done);
+    if (shopFilter === 'done') entries = entries.filter(([,v]) => v.done);
+  }
+
+  sortEntries(entries);
+  if (countEl) countEl.textContent = entries.length;
+
+  if (entries.length === 0) {
+    listEl.innerHTML = `<div class="empty">${emptyMsg(sec)}</div>`;
+  } else {
+    listEl.innerHTML = entries.map(([k,v]) => renderItem(sec,k,v,false)).join('');
+  }
+
+  updateOverview();
+}
+
+function renderEvents() {
+  const listEl = document.getElementById('list-events');
+  const countEl = document.getElementById('count-events');
+  let entries = Object.entries(data.events).filter(([,v]) => v && v.text);
+  sortEntries(entries);
+  if (countEl) countEl.textContent = entries.length;
+  if (listEl) {
+    listEl.innerHTML = entries.length === 0
+      ? '<div class="empty">No events yet.</div>'
+      : entries.map(([k,v]) => renderItem('events',k,v,false)).join('');
+  }
+  renderEventPanel();
+}
+
+function renderEventPanel() {
+  const body  = document.getElementById('event-panel-body');
+  const label = document.getElementById('event-panel-label');
+  const qrow  = document.getElementById('cal-quick-row');
+  const addbtn= document.getElementById('cal-add-btn');
+  if (!selDate) {
+    body.className = 'event-empty'; body.innerHTML = 'Click any day to see or add events.';
+    if(qrow) qrow.style.display = 'none';
+    return;
+  }
+  const [y,m,d] = selDate.split('-');
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  label.textContent = `${months[parseInt(m)-1]} ${parseInt(d)}, ${y}`;
+  addbtn.style.display = '';
+  if(qrow) qrow.style.display = 'flex';
+
+  const entries = Object.entries(data.events).filter(([,v]) => v && v.text && v.date === selDate);
+  if (entries.length === 0) {
+    body.className = 'event-empty'; body.innerHTML = 'No events on this day.';
+  } else {
+    body.className = 'event-list';
+    body.innerHTML = entries.map(([k,v]) => {
+      const col = v.color || '#aaa';
+      const ti = v.time ? `<span>⏰ ${fmtTime(v.time)}</span>` : '';
+      const ca = v.category ? `<span>${v.category}</span>` : '';
+      const wh = `<span style="display:inline-flex;align-items:center;gap:4px"><span class="who-dot" style="background:${col}"></span>${esc(v.who)}</span>`;
+      return `
+        <div class="event-item">
+          <div class="event-stripe" style="background:${col}"></div>
+          <div class="event-body">
+            <div class="event-name ${v.done?'struck':''}">${esc(v.text)}</div>
+            <div class="event-detail">${ti}${ca}${wh}</div>
+            ${v.notes ? `<div style="font-size:12px;color:var(--text3);margin-top:4px">${esc(v.notes)}</div>` : ''}
+          </div>
+          <div class="item-actions" style="opacity:1">
+            <button class="ia" onclick="openAddModal('events','${k}')" title="Edit">✏️</button>
+            <button class="ia del" onclick="deleteItem('events','${k}')" title="Remove">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OVERVIEW
+═══════════════════════════════════════════════════════════ */
+function updateOverview() {
+  const acts    = Object.values(data.activities).filter(v => v && v.text);
+  const open    = acts.filter(v => !v.done).length;
+  const done    = acts.filter(v =>  v.done).length;
+  const shopAmt = Object.values(data.shopping).filter(v => v && v.text && !v.done).length;
+  const today   = todayStr();
+  const upcoming = Object.values(data.events).filter(v => v && v.text && v.date && v.date >= today).length;
+
+  document.getElementById('ov-open').textContent  = open;
+  document.getElementById('ov-done').textContent  = done;
+  document.getElementById('ov-shop').textContent  = shopAmt;
+  document.getElementById('ov-events').textContent= upcoming;
+
+  // overview act list
+  const ovAct = document.getElementById('ov-act-list');
+  const ovActCount = document.getElementById('ov-act-count');
+  const actEntries = Object.entries(data.activities)
+    .filter(([,v]) => v && v.text && !v.done)
+    .sort((a,b) => { const da=a[1].date||'',db=b[1].date||''; return da&&db?da.localeCompare(db):da?-1:db?1:0; })
+    .slice(0,8);
+  ovActCount.textContent = actEntries.length;
+  ovAct.innerHTML = actEntries.length === 0
+    ? '<div class="empty">All clear! Add something.</div>'
+    : actEntries.map(([k,v]) => renderItem('activities',k,v,true)).join('');
+
+  // overview events
+  const ovEv = document.getElementById('ov-ev-list');
+  const ovEvCount = document.getElementById('ov-ev-count');
+  const evEntries = Object.entries(data.events)
+    .filter(([,v]) => v && v.text && (!v.date || v.date >= today))
+    .sort((a,b) => (a[1].date||'').localeCompare(b[1].date||''))
+    .slice(0,6);
+  ovEvCount.textContent = evEntries.length;
+  ovEv.innerHTML = evEntries.length === 0
+    ? '<div class="empty">No upcoming events.</div>'
+    : evEntries.map(([k,v]) => renderItem('events',k,v,true)).join('');
+
+  // overview notes
+  const ovNote = document.getElementById('ov-note-list');
+  const noteEntries = Object.entries(data.notes)
+    .filter(([,v]) => v && v.text)
+    .sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0))
+    .slice(0,5);
+  ovNote.innerHTML = noteEntries.length === 0
+    ? '<div class="empty">No notes yet.</div>'
+    : noteEntries.map(([k,v]) => renderItem('notes',k,v,true)).join('');
+
+  // overview shopping
+  const ovShop = document.getElementById('ov-shop-list');
+  const ovShopCount = document.getElementById('ov-shop-count');
+  const shopEntries = Object.entries(data.shopping)
+    .filter(([,v]) => v && v.text && !v.done).slice(0,8);
+  ovShopCount.textContent = shopEntries.length;
+  ovShop.innerHTML = shopEntries.length === 0
+    ? '<div class="empty">List is empty.</div>'
+    : shopEntries.map(([k,v]) => renderItem('shopping',k,v,true)).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CALENDAR
+═══════════════════════════════════════════════════════════ */
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_NAMES   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function renderCalendar() {
+  const grid = document.getElementById('cal-grid');
+  const lbl  = document.getElementById('cal-label');
+  if (!grid) return;
+  lbl.textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
+
+  const today   = new Date(); const todayD = today.getDate(), todayM = today.getMonth(), todayY = today.getFullYear();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysIn   = new Date(calYear, calMonth+1, 0).getDate();
+  const prevDays = new Date(calYear, calMonth, 0).getDate();
+
+  let html = DAY_NAMES.map(d => `<div class="cal-dname">${d}</div>`).join('');
+
+  for (let i=0;i<firstDay;i++) {
+    html += `<div class="cal-day other-month">${prevDays-firstDay+i+1}</div>`;
+  }
+
+  for (let d=1; d<=daysIn; d++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday   = d===todayD && calMonth===todayM && calYear===todayY;
+    const isSel     = ds === selDate;
+    const eventsOnDay = Object.values(data.events).filter(v => v && v.date===ds);
+    const actsOnDay   = Object.values(data.activities).filter(v => v && v.date===ds);
+    const hasItems = eventsOnDay.length > 0 || actsOnDay.length > 0;
+
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    else if (isSel) cls += ' selected';
+    if (hasItems) cls += ' has-items';
+
+    const pips = [
+      ...eventsOnDay.slice(0,2).map(v => `<span class="pip" style="background:${v.color||'#6E95F7'}"></span>`),
+      ...actsOnDay.slice(0,1).map(v => `<span class="pip" style="background:${v.color||'#4CAF7D'}"></span>`)
+    ].join('');
+
+    html += `<div class="${cls}" onclick="selectDate('${ds}')">
+      ${d}
+      <div class="pip-row">${pips}</div>
+    </div>`;
+  }
+
+  const trailing = 42 - firstDay - daysIn;
+  for (let i=1;i<=trailing;i++) html += `<div class="cal-day other-month">${i}</div>`;
+
+  grid.innerHTML = html;
+}
+
+function selectDate(ds) {
+  selDate = ds;
+  renderCalendar();
+  renderEventPanel();
+  const qinput = document.getElementById('input-events');
+  if (qinput) qinput.focus();
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth>11){calMonth=0;calYear++;}
+  if (calMonth<0) {calMonth=11;calYear--;}
+  renderCalendar();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABS & FILTERS
+═══════════════════════════════════════════════════════════ */
+const ALL_TABS = ['overview','activities','shopping','notes','calendar'];
+
+function showTab(name) {
+  ALL_TABS.forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t===name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((btn,i) => {
+    btn.classList.toggle('active', ALL_TABS[i]===name);
+  });
+  if (name==='calendar') renderCalendar();
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-bar .fpill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSection('activities');
+}
+
+function setShopFilter(f, btn) {
+  shopFilter = f;
+  document.querySelectorAll('#tab-shopping .fpill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSection('shopping');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL HELPERS
+═══════════════════════════════════════════════════════════ */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   SHARE
+═══════════════════════════════════════════════════════════ */
+function openShareModal() {
+  document.getElementById('share-code').value = myRoom;
+  const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(myRoom)}`;
+  document.getElementById('share-url').value = url;
+  openModal('share-modal');
+}
+
+function copy(inputId, msg) {
+  const val = document.getElementById(inputId).value;
+  navigator.clipboard.writeText(val).then(() => showToast(msg));
+}
+
+function leaveRoom() { location.href = location.pathname; }
+
+// override ib share button
+document.addEventListener('click', e => {
+  if (e.target.closest('.ib[title="Share"]')) { e.preventDefault(); openShareModal(); }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════ */
+function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function todayStr() {
+  const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+
+function fmtDate(ds) {
+  if (!ds) return '';
+  const [y,m,d] = ds.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today = todayStr();
+  const tomorrow = (() => { const t=new Date(); t.setDate(t.getDate()+1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; })();
+  if (ds===today) return 'Today';
+  if (ds===tomorrow) return 'Tomorrow';
+  return `${months[parseInt(m)-1]} ${parseInt(d)}`;
+}
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  const [h,m] = ts.split(':');
+  const hr = parseInt(h); const ampm = hr >= 12 ? 'pm' : 'am';
+  return `${hr===0?12:hr>12?hr-12:hr}:${m}${ampm}`;
+}
+
+function emptyMsg(sec) {
+  const msgs = { activities:'No activities yet.', shopping:'List is empty.', notes:'No notes yet.', ideas:'No ideas yet.', events:'No events yet.' };
+  return msgs[sec] || 'Nothing here yet.';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
