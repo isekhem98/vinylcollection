@@ -20,16 +20,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug secret length
-        run: |
-          SECRET="${{ secrets.GIST_TOKEN }}"
-          echo "Secret length: ${#SECRET}"
-
       - name: Inject Gist token and build
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: |
           mkdir _site
-          sed "s|%%GIST_TOKEN%%|${{ secrets.GIST_TOKEN }}|g" index.html > _site/index.html
-          grep -q "%%GIST_TOKEN%%" _site/index.html && echo "REPLACEMENT FAILED" || echo "Replacement OK"
+          python3 -c "
+import os, sys
+token = os.environ['GIST_TOKEN']
+html = open('index.html').read()
+html = html.replace('%%GIST_TOKEN%%', token)
+open('_site/index.html', 'w').write(html)
+print('Replacement OK' if '%%GIST_TOKEN%%' not in html else 'REPLACEMENT FAILED')
+"
 
       - name: Upload to Pages
         uses: actions/upload-pages-artifact@v3

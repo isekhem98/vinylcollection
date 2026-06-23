@@ -635,7 +635,7 @@ function enterRoom() {
   if (!room) { showToast('Enter or generate a room code'); return; }
   myName = name; myRoom = room;
   localStorage.setItem('planner_name', myName);
-  if (!GIST_TOKEN || GIST_TOKEN === '%%GIST_TOKEN%%') {
+  if (GIST_TOKEN.includes('%%')) {
     showToast('⚠️ Token not injected — deploy via GitHub Actions');
     return;
   }
