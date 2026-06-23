@@ -25,14 +25,8 @@ jobs:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: |
           mkdir _site
-          python3 -c "
-import os, sys
-token = os.environ['GIST_TOKEN']
-html = open('index.html').read()
-html = html.replace('%%GIST_TOKEN%%', token)
-open('_site/index.html', 'w').write(html)
-print('Replacement OK' if '%%GIST_TOKEN%%' not in html else 'REPLACEMENT FAILED')
-"
+          python3 inject.py
+          grep -q "%%GIST_TOKEN%%" _site/index.html && echo "REPLACEMENT FAILED" || echo "Replacement OK"
 
       - name: Upload to Pages
         uses: actions/upload-pages-artifact@v3
