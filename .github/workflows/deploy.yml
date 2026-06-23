@@ -20,11 +20,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug secret length
+        run: |
+          SECRET="${{ secrets.GIST_TOKEN }}"
+          echo "Secret length: ${#SECRET}"
+
       - name: Inject Gist token and build
         run: |
           mkdir _site
           sed "s|%%GIST_TOKEN%%|${{ secrets.GIST_TOKEN }}|g" index.html > _site/index.html
-          # Verify replacement worked (safe — only prints true/false, not the token)
           grep -q "%%GIST_TOKEN%%" _site/index.html && echo "REPLACEMENT FAILED" || echo "Replacement OK"
 
       - name: Upload to Pages
