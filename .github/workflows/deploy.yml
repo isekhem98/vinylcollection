@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
 
-# Required for GitHub Pages deployment
 permissions:
   contents: read
   pages: write
@@ -21,16 +20,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject Gist token into HTML
-        # Replaces the %%GIST_TOKEN%% placeholder with the real secret.
-        # The secret is never written to disk or printed in logs.
+      - name: Inject Gist token and build
         run: |
-          sed -i "s|%%GIST_TOKEN%%|${{ secrets.GIST_TOKEN }}|g" index.html
+          mkdir _site
+          sed "s|%%GIST_TOKEN%%|${{ secrets.GIST_TOKEN }}|g" index.html > _site/index.html
+          # Verify replacement worked (safe — only prints true/false, not the token)
+          grep -q "%%GIST_TOKEN%%" _site/index.html && echo "REPLACEMENT FAILED" || echo "Replacement OK"
 
       - name: Upload to Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'   # upload the whole repo root (just index.html is fine)
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment
