@@ -623,9 +623,11 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('setup-tagline').textContent = "You've been invited to a shared planner. Just enter your name to join.";
 
     if (savedName) {
-      // Name remembered — enter automatically, no interaction needed
+      // Name remembered — enter automatically after brief delay
       document.getElementById('sname').value = savedName;
-      enterRoom();
+      document.getElementById('enter-btn').textContent = 'Opening…';
+      document.getElementById('enter-btn').disabled = true;
+      setTimeout(enterRoom, 100);
       return;
     }
 
@@ -698,7 +700,8 @@ async function initGist() {
     let found = null, page = 1;
     outer: while (page <= 5) {
       const r = await fetch(`${GH_API}/gists?per_page=100&page=${page}`, { headers: ghHeaders() });
-      if (!r.ok) throw new Error('Token error — check your GitHub secret');
+      if (r.status === 401) throw new Error('GitHub token invalid or expired — redeploy with a fresh token');
+      if (!r.ok) throw new Error(`GitHub API error ${r.status}`);
       const list = await r.json();
       if (!list.length) break;
       for (const g of list) {
@@ -721,7 +724,7 @@ async function initGist() {
           files: { [gistFilename()]: { content: JSON.stringify(data) } }
         })
       });
-      if (!r.ok) throw new Error('Could not create Gist');
+      if (!r.ok) throw new Error('Could not create Gist — check token scope (needs "gist")');
       myGistId = (await r.json()).id;
       setSyncStatus('ok');
     }
