@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -258,7 +258,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
       <label>Room code <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">— share this with your partner</span></label>
       <input id="sroom" type="text" placeholder="e.g. sunday-plans" maxlength="50" autocomplete="off"/>
     </div>
-
     <button class="btn btn-dark" style="margin-top:0.75rem" onclick="enterRoom()">Open planner →</button>
     <div class="sep"><span>or</span></div>
     <button class="btn btn-outline" onclick="createRoom()">Generate a room code for me</button>
@@ -581,10 +580,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 /* ═══════════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════════ */
-let gun, gunRoom, myName, myRoom, myColor;
+// Token is injected by GitHub Actions at build time — never visible in source
+const GIST_TOKEN = '%%GIST_TOKEN%%';
+
+let myName, myRoom, myColor;
 let activeFilter = 'all', shopFilter = 'all';
 let calMonth, calYear, selDate;
 let editingKey = null;
+let myGistId = null;
+let _pollTimer = null;
+let _lastEtag = null;
+let _writeTimer = null;
 
 const COLORS = ['#6E95F7','#F47B6E','#4CAF7D','#B07EF0','#F0A830','#40BCD8'];
 const CATS = {
@@ -629,6 +635,10 @@ function enterRoom() {
   if (!room) { showToast('Enter or generate a room code'); return; }
   myName = name; myRoom = room;
   localStorage.setItem('planner_name', myName);
+  if (!GIST_TOKEN || GIST_TOKEN === '%%GIST_TOKEN%%') {
+    showToast('⚠️ Token not injected — deploy via GitHub Actions');
+    return;
+  }
 
   const ck = 'planner_clr_' + myRoom + '_' + myName;
   let ci = parseInt(localStorage.getItem(ck));
@@ -643,40 +653,118 @@ function enterRoom() {
   av.textContent = myName.charAt(0).toUpperCase();
   av.style.background = myColor + '28'; av.style.color = myColor;
 
-  initGun();
+  initGist();
   renderCalendar();
 }
 
 /* ═══════════════════════════════════════════════════════════
-   GUN SYNC
+   GITHUB GIST SYNC
+   Token is baked in at build time by GitHub Actions.
+   One private Gist per room, polled every 4 s with ETag
+   caching so unchanged responses are free (no rate limit hit).
+   Writes are debounced 600 ms to batch rapid edits.
 ═══════════════════════════════════════════════════════════ */
-function initGun() {
-  gun = GUN(['https://gun-manhattan.herokuapp.com/gun','https://gun-us.herokuapp.com/gun']);
-  gunRoom = gun.get('planner_v3_' + myRoom);
+const GH_API = 'https://api.github.com';
+const ghHeaders = (extra={}) => Object.assign({
+  'Authorization': `Bearer ${GIST_TOKEN}`,
+  'Accept': 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28'
+}, extra);
+const gistFilename = () => `planner-${myRoom}.json`;
+
+async function initGist() {
   setSyncStatus('busy');
+  try {
+    // Search existing gists for this room's file
+    let found = null, page = 1;
+    outer: while (page <= 5) {
+      const r = await fetch(`${GH_API}/gists?per_page=100&page=${page}`, { headers: ghHeaders() });
+      if (!r.ok) throw new Error('Token error — check your GitHub secret');
+      const list = await r.json();
+      if (!list.length) break;
+      for (const g of list) {
+        if (g.files?.[gistFilename()]) { found = g; break outer; }
+      }
+      page++;
+    }
 
-  SECTIONS.forEach(sec => {
-    gunRoom.get(sec).map().on((val, key) => {
-      if (val === null || !val) { delete data[sec][key]; }
-      else if (val.text)        { data[sec][key] = val; }
-      renderSection(sec);
-      updateOverview();
+    if (found) {
+      myGistId = found.id;
+      await pullGist(true);
+    } else {
+      // First run: create the gist
+      const r = await fetch(`${GH_API}/gists`, {
+        method: 'POST',
+        headers: ghHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          description: `Our Planner — ${myRoom}`,
+          public: false,
+          files: { [gistFilename()]: { content: JSON.stringify(data) } }
+        })
+      });
+      if (!r.ok) throw new Error('Could not create Gist');
+      myGistId = (await r.json()).id;
+      setSyncStatus('ok');
+    }
+    startPolling();
+  } catch(e) {
+    setSyncStatus('error');
+    showToast('⚠️ ' + e.message);
+  }
+}
+
+async function pullGist(force) {
+  if (!myGistId) return;
+  try {
+    const headers = ghHeaders();
+    if (!force && _lastEtag) headers['If-None-Match'] = _lastEtag;
+    const r = await fetch(`${GH_API}/gists/${myGistId}`, { headers });
+    if (r.status === 304) { setSyncStatus('ok'); return; }
+    if (!r.ok) throw new Error('pull failed');
+    _lastEtag = r.headers.get('ETag') || null;
+    const remote = JSON.parse((await r.json()).files[gistFilename()]?.content || '{}');
+    SECTIONS.forEach(sec => { data[sec] = remote[sec] || {}; renderSection(sec); });
+    updateOverview();
+    setSyncStatus('ok');
+  } catch { setSyncStatus('busy'); }
+}
+
+function startPolling() {
+  clearInterval(_pollTimer);
+  _pollTimer = setInterval(() => pullGist(false), 4000);
+}
+
+async function flushWrite() {
+  try {
+    const r = await fetch(`${GH_API}/gists/${myGistId}`, {
+      method: 'PATCH',
+      headers: ghHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ files: { [gistFilename()]: { content: JSON.stringify(data) } } })
     });
-  });
-
-  setTimeout(() => setSyncStatus('ok'), 2000);
+    if (!r.ok) throw new Error('write failed');
+    _lastEtag = null;
+    setSyncStatus('ok');
+  } catch {
+    showToast('⚠️ Could not save — will retry');
+    setSyncStatus('busy');
+    setTimeout(flushWrite, 3000);
+  }
 }
 
 function setSyncStatus(state) {
   const d = document.getElementById('sdot'), t = document.getElementById('stxt');
-  if (state === 'busy') { d.classList.add('busy'); t.textContent = 'Syncing…'; }
-  else                  { d.classList.remove('busy'); d.style.background='var(--green)'; t.textContent = 'Live — synced with your partner'; }
+  if (state === 'busy')  { d.classList.add('busy');    d.style.background=''; t.textContent = 'Syncing…'; }
+  else if (state==='error') { d.classList.remove('busy'); d.style.background='var(--red)'; t.textContent = 'Sync error — check Actions secret'; }
+  else                   { d.classList.remove('busy'); d.style.background='var(--green)'; t.textContent = 'Synced with your partner'; }
 }
 
 function put(sec, key, item) {
-  gunRoom.get(sec).get(key).put(item);
+  data[sec][key] = item;
+  renderSection(sec);
+  updateOverview();
   setSyncStatus('busy');
-  setTimeout(() => setSyncStatus('ok'), 900);
+  clearTimeout(_writeTimer);
+  _writeTimer = setTimeout(flushWrite, 600);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -702,10 +790,12 @@ function quickAddEvent() {
 }
 
 function deleteItem(sec, key) {
-  gunRoom.get(sec).get(key).put(null);
   delete data[sec][key];
   renderSection(sec);
   updateOverview();
+  setSyncStatus('busy');
+  clearTimeout(_writeTimer);
+  _writeTimer = setTimeout(flushWrite, 600);
   showToast('Removed');
 }
 
@@ -1143,7 +1233,7 @@ function copy(inputId, msg) {
   navigator.clipboard.writeText(val).then(() => showToast(msg));
 }
 
-function leaveRoom() { location.href = location.pathname; }
+function leaveRoom() { clearInterval(_pollTimer); location.href = location.pathname; }
 
 // override ib share button
 document.addEventListener('click', e => {
