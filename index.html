@@ -1090,9 +1090,13 @@ function updateOverview() {
   const ovAct = document.getElementById('ov-act-list');
   const ovActCount = document.getElementById('ov-act-count');
   const actEntries = Object.entries(data.activities)
-    .filter(([,v]) => v && v.text && !v.done)
-    .sort((a,b) => { const da=a[1].date||'',db=b[1].date||''; return da&&db?da.localeCompare(db):da?-1:db?1:0; })
-    .slice(0,8);
+    .filter(([,v]) => v && v.text)
+    .sort((a,b) => {
+      // open first, then by date
+      if (a[1].done !== b[1].done) return a[1].done ? 1 : -1;
+      const da=a[1].date||'',db=b[1].date||'';
+      return da&&db?da.localeCompare(db):da?-1:db?1:0;
+    });
   ovActCount.textContent = actEntries.length;
   ovAct.innerHTML = actEntries.length === 0
     ? '<div class="empty">All clear! Add something.</div>'
