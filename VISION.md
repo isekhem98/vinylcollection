@@ -1,6 +1,6 @@
 # DuckDuckShelf — Vision Document
 
-> From vinyl tracker to a cozy home for everything you collect.
+> From vinyl tracker to a cozy home for everything you collect;
 
 ----
 
